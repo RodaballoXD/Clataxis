@@ -1,4 +1,4 @@
-import { SyntaxNode, WordNode, RootNode } from "./tree";
+import { SyntaxNode, WordNode, RootNode, AnalysisData, NodeId } from "./tree";
 
 abstract class BoxNodeEl extends HTMLElement {
     type = 'box';
@@ -8,25 +8,32 @@ abstract class BoxNodeEl extends HTMLElement {
         super();
     }
 
-    build(node: SyntaxNode | RootNode) {
+    build(node: SyntaxNode | RootNode): Map<NodeId, AnyNodeEl> {
         this.id = `node ${node.id}`;
 
-        this.renderInside(node.contents);
+        return this.renderInside(node.contents).set(node.id, this);
     }
 
-    renderInside(contents: (SyntaxNode | WordNode)[]) {
+    renderInside(contents: (SyntaxNode | WordNode)[]): Map<NodeId, AnyNodeEl> {
+        const elementMap = new Map<NodeId, AnyNodeEl>();
+
         this.childrenEl.replaceChildren();
         for (const child of contents) {
             if (child.type === 'word') {
                 const wordEl = document.createElement('word-node') as WordNodeEl;
                 wordEl.build(child);
+
                 this.childrenEl.appendChild(wordEl);
+                elementMap.set(child.id, wordEl);
                 continue;
             }
             const childEl = document.createElement('syntax-node') as SyntaxNodeEl;
             childEl.build(child);
+
             this.childrenEl.appendChild(childEl);
+            elementMap.set(child.id, childEl);
         }
+        return elementMap;
     }
 }
 
@@ -58,10 +65,15 @@ export class SyntaxNodeEl extends BoxNodeEl {
                 <div class = "children"></div>
                 <div class = "line"></div>
                 <div class = "analysis">
+                    <input class="category-input" style="display: none">
+
                     <span class = "category" style="display: none"></span>
                     <span class = "slash" style="display: none">/</span>
                     <span class = "function" style="display: none"></span>
                     <span class = "comment" style="display: none"></span>
+
+                    <input class="function-input" style="display: none">
+                    <input class="comment-input" style="display: none">
                 </div>
             </div>
         `;
@@ -72,15 +84,28 @@ export class SyntaxNodeEl extends BoxNodeEl {
             categoryEl: this.analysisEl.querySelector('.category') as HTMLSpanElement,
             slashEl: this.analysisEl.querySelector('.slash') as HTMLSpanElement,
             functionEl: this.analysisEl.querySelector('.function') as HTMLSpanElement,
-            commentEl: this.analysisEl.querySelector('.comment') as HTMLSpanElement
+            commentEl: this.analysisEl.querySelector('.comment') as HTMLSpanElement,
+            catInputEl: this.analysisEl.querySelector('.category-input') as HTMLInputElement,
+            funcInputEl: this.analysisEl.querySelector('.function-input') as HTMLInputElement,
+            commentInputEl: this.analysisEl.querySelector('.comment-input') as HTMLInputElement
         };
     }
 
-    build(node: SyntaxNode) {
-        super.build(node);
+    build(node: SyntaxNode): Map<NodeId, AnyNodeEl> {
+        const elementMap = super.build(node);
 
         const analysis = { category: node.category, function: node.function, comment: node.comment };
         this.setAnalysis(analysis);
+
+        return elementMap;
+    }
+
+    select() {
+        this.classList.add('selected');
+    }
+
+    deselect() {
+        this.classList.remove('selected');
     }
 
     setAnalysis(analysis: AnalysisData) { // Implemented in a way that undefined values won't overwrite existing values
@@ -107,12 +132,25 @@ export class SyntaxNodeEl extends BoxNodeEl {
         this.analysisElInside.functionEl.textContent = newFunc ?? '';
         this.analysisElInside.commentEl.textContent = newComment ?? '';
     }
-}
 
-export interface AnalysisData {
-    category?: string | null;
-    function?: string | null;
-    comment?: string | null;
+    startEdit(part?: 'category' | 'function' | 'comment'): 'category' | 'function' | 'comment' {
+        this.analysisEl.classList.add('editing');
+
+        if (!part) part = 'category';
+        // No sé cómo colocar el cursor en el lugar apropiado o lo que sea
+
+        return part;
+    }
+
+    endEdit(): AnalysisData {
+        this.analysisEl.classList.remove('editing');
+
+        return {
+            category: popContent(this.analysisElInside.catInputEl),
+            function: popContent(this.analysisElInside.funcInputEl),
+            comment: popContent(this.analysisElInside.commentInputEl),
+        }
+    }
 }
 
 interface AnalysisEls {
@@ -120,12 +158,17 @@ interface AnalysisEls {
     slashEl: HTMLSpanElement;
     functionEl: HTMLSpanElement;
     commentEl: HTMLSpanElement;
+    catInputEl: HTMLInputElement;
+    funcInputEl: HTMLInputElement;
+    commentInputEl: HTMLInputElement;
 }
 
 export class WordNodeEl extends HTMLElement {
     type = 'word';
     private wordEl: HTMLDivElement;
     private commentEl: HTMLDivElement;
+    private wordInputEl: HTMLInputElement;
+    private commentInputEl: HTMLInputElement;
     private currentComment: string | null = null;
 
     constructor() {
@@ -135,18 +178,25 @@ export class WordNodeEl extends HTMLElement {
             <div class = "word-node">
                 <div class = "comment"></div>
                 <div class = "word"></div>
+
+                <input class = "comment-input"></input>
+                <input class = "word-input"></input>
             </div>
         `;
 
         this.wordEl = this.querySelector('.word') as HTMLDivElement;
         this.commentEl = this.querySelector('.comment') as HTMLDivElement;
+        this.wordInputEl = this.querySelector('.word-input') as HTMLInputElement;
+        this.commentInputEl = this.querySelector('.comment-input') as HTMLInputElement;
     }
 
-    build(node: WordNode) {
+    build(node: WordNode): Map<NodeId, AnyNodeEl> {
         this.id = `node ${node.id}`;
         this.wordEl.textContent = node.word;
-        this.currentComment = (node.comment) ? node.comment : null;
-        this.commentEl.textContent = (this.currentComment) ? this.currentComment : '';
+        
+        this.setComment(node.comment);
+
+        return new Map<NodeId, AnyNodeEl>().set(node.id, this);
     }
 
     setComment(comment?: string | null) {
@@ -156,5 +206,43 @@ export class WordNodeEl extends HTMLElement {
         this.currentComment = comment;
         this.commentEl.textContent = (this.currentComment) ? this.currentComment : '';
     }
+
+    select() {
+        this.classList.add('selected');
+    }
+
+    deselect() {
+        this.classList.remove('selected');
+    }
+
+    startEdit(part?: 'word' | 'comment'): 'word' | 'comment' {
+        this.classList.add('editing');
+
+        if (!part) part = 'word';
+        // No sé cómo colocar el cursor en el lugar apropiado o lo que sea
+
+        return part;
+    }
+
+    endEdit(): WordNodeData {
+        this.classList.remove('editing');
+
+        return {
+            word: popContent(this.wordInputEl),
+            comment: popContent(this.commentInputEl)
+        };
+    }
 }
 
+export type AnyNodeEl = RootNodeEl | SyntaxNodeEl | WordNodeEl | BoxNodeEl;
+
+export interface WordNodeData {
+    word?: string | null;
+    comment?: string | null
+}
+
+function popContent(element: HTMLInputElement): string | null {
+    const content = element.value || null;
+    element.value = '';
+    return content;
+}

@@ -2,13 +2,22 @@ export class SyntaxTree {
     private tree: RootNode;
     private idCounter: number = 0;
     private tokenCounter: number | null = null;
+    private nodeMap: Map<NodeId, RootNode | SyntaxNode | WordNode>;
+    private parentNodeMap: Map<number, NodeId>;
 
     constructor(json?: ReducedJSON) {
         this.tree = this.buildTreeFromReduced(json ?? []);
+
+        this.nodeMap = new Map();
+        this.parentNodeMap = new Map();
+        this.mapNodes();
     }
 
     private buildTreeFromReduced(json: ReducedJSON): RootNode {
-        const contents = json.map(this.buildNode);
+        this.idCounter = 0;
+        this.tokenCounter = null;
+
+        const contents = json.map(child => this.buildNode(child));
         const { startToken, endToken } = this.getTokenRangeFromChildren(contents);
         return {
             id: 'root',
@@ -33,7 +42,7 @@ export class SyntaxTree {
                 comment: node.comment
             };
         }
-        const contents = node.contents.map(this.buildNode);
+        const contents = node.contents.map(child => this.buildNode(child));
         const { startToken, endToken } = this.getTokenRangeFromChildren(contents);
         return {
             id: this.newId(),
@@ -47,11 +56,26 @@ export class SyntaxTree {
         };
     }
 
+    private mapNodes() {
+        this.nodeMap = new Map();
+        this.parentNodeMap = new Map();
+        this.traverse(this.tree, 'root');
+    }
+    private traverse(node: RootNode | SyntaxNode | WordNode, parentId: NodeId) {
+        this.nodeMap.set(node.id, node);
+        if (node.id !== 'root') this.parentNodeMap.set(node.id, parentId);
+
+        if (node.type === 'word') return;
+        node.contents.forEach((child) => this.traverse(child, node.id));
+    };
+
     private newId(): number {
         return this.idCounter++;
     }
 
     private getTokenRangeFromChildren(children: (SyntaxNode | WordNode)[]): { startToken: number, endToken: number } {
+        if (children.length === 0) throw new Error('Cannot get token range from empty children array');
+
         let startToken: number; let endToken: number;
 
         const first = children[0];
@@ -81,7 +105,7 @@ export class SyntaxTree {
 
     toReducedJSON(): ReducedJSON {
         const contents = this.tree.contents;
-        return contents.map(this.reduceNode);
+        return contents.map(child => this.reduceNode(child));
     }
 
     private reduceNode(node: SyntaxNode | WordNode): ReducedSyntaxNode {
@@ -95,10 +119,143 @@ export class SyntaxTree {
             function: (node as SyntaxNode).function,
             category: (node as SyntaxNode).category,
             comment: node.comment,
-            contents: (node as SyntaxNode).contents.map(this.reduceNode)
+            contents: (node as SyntaxNode).contents.map(child => this.reduceNode(child))
         };
     }
+
+    getNode(id: NodeId): SyntaxNode | RootNode | WordNode {
+        return this.nodeMap.get(id)!;
+    }
+
+    getParentId(id: number): NodeId {
+        return this.parentNodeMap.get(id)!;
+    }
+
+    getParentNode(id: number): SyntaxNode | RootNode {
+        return this.nodeMap.get(this.getParentId(id)!)! as SyntaxNode | RootNode;
+    }
+
+    setNodeAnalysis(id: number, analysis: AnalysisData) {
+        const node = this.nodeMap.get(id)! as SyntaxNode;
+        if ((node as any).type === 'word') throw new Error('Cannot setNodeAnalysis of WordNode');
+        node.category = newAnalysisPart(node.category, analysis.category);
+        node.function = newAnalysisPart(node.function, analysis.function);
+        node.comment = newAnalysisPart(node.comment, analysis.comment) ?? undefined;
+
+        function newAnalysisPart(currentPart?: string | null, newPart?: string | null): string | null {
+            if (newPart === null) {
+                return null;
+            } else if (newPart === undefined) {
+                return (!currentPart) ? null : currentPart;
+            }
+            return newPart;
+        }
+    }
+
+    deleteNode(id: number) { // Deletes the node and its children, only keeping words
+        const node = this.nodeMap.get(id)! as SyntaxNode;
+        if ((node as any).type === 'word') throw new Error('Cannot delete word node');
+
+        const parent = this.getParentNode(id)! as SyntaxNode | RootNode;
+        const nodeIndexInParent = parent.contents.indexOf(node);
+
+        const wordNodes = findWords(node);
+        parent.contents.splice(nodeIndexInParent, 1, ...wordNodes);
+
+        function findWords(node: SyntaxNode | RootNode): WordNode[] {
+            const children = node.contents;
+            let words: WordNode[] = [];
+            for (const child of children) {
+                if (child.type === 'word') {
+                    words.push(child);
+                    continue;
+                }
+                words.push(...findWords(child));
+            }
+            return words;
+        }
+    }
+
+    promoteChildren(id: number) { // Deletes the node and gives its children to its parent
+        const node = this.nodeMap.get(id)! as SyntaxNode;
+        if ((node as any).type === 'word') {
+            throw new Error('Cannot delete word node');
+        }
+        const children = node.contents;
+        const parent = this.getParentNode(id);
+        const nodeIndexInParent = parent.contents.indexOf(node);
+        parent.contents.splice(nodeIndexInParent, 1, ...children);
+    }
+
+    insertBoxAtRange(start: number, end: number): ({ status: 'error' } | { innermostUntouchedId: NodeId, status: 'success' }) {
+        const root = this.tree;
+        const parentOfInserted = findParentForRange(root, start, end);
+        if (!parentOfInserted) return { status: 'error' };
+
+        const children = parentOfInserted.contents;
+        const { startNode, endNode } = findStartEndChildren(children);
+        if (!(startNode && endNode)) return { status: 'error' };
+
+        const nodesToMove = nodesInRange(children, startNode, endNode);
+
+        const newNode = this.buildNode({ function: null, category: null, contents: [] }) as SyntaxNode;
+        newNode.contents = nodesToMove;
+
+        parentOfInserted.contents.splice(
+            parentOfInserted.contents.indexOf(nodesToMove[0]),
+            nodesToMove.length,
+            newNode
+        );
+
+        return {
+            innermostUntouchedId: parentOfInserted.id,
+            status: 'success'
+        };
+
+        function findParentForRange(node: SyntaxNode | RootNode, start: number, end: number): SyntaxNode | RootNode | null {
+            const endBigger = (node.endToken >= end);
+            const startSmaller = (node.startToken <= start);
+            if (!(endBigger && startSmaller)) return null;
+
+            for (const child of node.contents) {
+                if (child.type === 'word') continue;
+                const found = findParentForRange(child, start, end);
+                if (found) return found;
+            }
+
+            return node;
+        }
+
+        function findStartEndChildren(children: (SyntaxNode | WordNode)[]): { startNode: SyntaxNode | WordNode | null, endNode: SyntaxNode | WordNode | null } {
+            let startNode: SyntaxNode | WordNode | null = null;
+            let endNode: SyntaxNode | WordNode | null = null;
+
+            for (const child of children) {
+                const childStartToken = (child.type === 'word') ? child.token : child.startToken;
+                const childEndToken = (child.type === 'word') ? child.token : child.endToken;
+
+                if (childStartToken === start) startNode = child;
+                if (childEndToken === end) endNode = child;
+            }
+
+            return { startNode, endNode };
+        }
+
+        function nodesInRange(children: (SyntaxNode | WordNode)[], startNode: SyntaxNode | WordNode, endNode: SyntaxNode | WordNode): (SyntaxNode | WordNode)[] {
+            let nodesToMove: (SyntaxNode | WordNode)[] = [];
+            let inRange = false;
+            for (const child of children) {
+                if (child === startNode) inRange = true;
+                if (!inRange) continue;
+                nodesToMove.push(child);
+                if (child === endNode) break;
+            }
+            return nodesToMove;
+        }
+    }
 }
+
+
 
 export interface SyntaxNode {
     id: number;
@@ -141,3 +298,11 @@ export interface ReducedWord {
 
 export type ReducedSyntaxNode = ReducedSyntaxBox | ReducedWord;
 export type ReducedJSON = ReducedSyntaxNode[];
+
+export type NodeId = number | 'root';
+
+export interface AnalysisData {
+    category?: string | null;
+    function?: string | null;
+    comment?: string | null;
+}
