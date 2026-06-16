@@ -6,7 +6,7 @@ export class SyntaxTree {
     private parentNodeMap: Map<number, NodeId>;
 
     constructor(json?: ReducedJSON) {
-        this.tree = this.buildTreeFromReduced(json ?? []);
+        this.tree = this.buildTreeFromReduced(json ?? [{ contents: '∅' }]);
 
         this.nodeMap = new Map();
         this.parentNodeMap = new Map();
@@ -95,12 +95,13 @@ export class SyntaxTree {
         return { startToken, endToken };
     }
 
-    toJSON(): RootNode {
+    getJSON(): RootNode {
         return this.tree;
     }
 
     setJSON(json: RootNode) {
         this.tree = json;
+        this.mapNodes();
     }
 
     toReducedJSON(): ReducedJSON {
@@ -116,27 +117,39 @@ export class SyntaxTree {
             };
         }
         return {
-            function: (node as SyntaxNode).function,
-            category: (node as SyntaxNode).category,
+            function: node.function,
+            category: node.category,
             comment: node.comment,
-            contents: (node as SyntaxNode).contents.map(child => this.reduceNode(child))
+            contents: node.contents.map(child => this.reduceNode(child))
         };
     }
 
     getNode(id: NodeId): SyntaxNode | RootNode | WordNode {
-        return this.nodeMap.get(id)!;
+        const node = this.nodeMap.get(id);
+        if (!node) {
+            throw new Error(`Node ${id} is not in nodeMap`);
+        }
+        return node;
     }
 
     getParentId(id: number): NodeId {
-        return this.parentNodeMap.get(id)!;
+        const parentId = this.parentNodeMap.get(id);
+        if (!parentId) {
+            throw new Error(`Id ${id} is not in parentMap`);
+        }
+        return parentId;
     }
 
     getParentNode(id: number): SyntaxNode | RootNode {
-        return this.nodeMap.get(this.getParentId(id)!)! as SyntaxNode | RootNode;
+        const node = this.getNode(this.getParentId(id)!) as SyntaxNode | RootNode;
+        if (!node) {
+            throw new Error(`Node ${id} is not in nodeMap`);
+        }
+        return node;
     }
 
     setNodeAnalysis(id: number, analysis: AnalysisData) {
-        const node = this.nodeMap.get(id)! as SyntaxNode;
+        const node = this.getNode(id) as SyntaxNode;
         if ((node as any).type === 'word') throw new Error('Cannot setNodeAnalysis of WordNode');
         node.category = newAnalysisPart(node.category, analysis.category);
         node.function = newAnalysisPart(node.function, analysis.function);
@@ -153,14 +166,16 @@ export class SyntaxTree {
     }
 
     deleteNode(id: number) { // Deletes the node and its children, only keeping words
-        const node = this.nodeMap.get(id)! as SyntaxNode;
+        const node = this.getNode(id) as SyntaxNode;
         if ((node as any).type === 'word') throw new Error('Cannot delete word node');
 
-        const parent = this.getParentNode(id)! as SyntaxNode | RootNode;
+        const parent = this.getParentNode(id) as SyntaxNode | RootNode;
         const nodeIndexInParent = parent.contents.indexOf(node);
 
         const wordNodes = findWords(node);
         parent.contents.splice(nodeIndexInParent, 1, ...wordNodes);
+
+        this.mapNodes();
 
         function findWords(node: SyntaxNode | RootNode): WordNode[] {
             const children = node.contents;
@@ -177,7 +192,7 @@ export class SyntaxTree {
     }
 
     promoteChildren(id: number) { // Deletes the node and gives its children to its parent
-        const node = this.nodeMap.get(id)! as SyntaxNode;
+        const node = this.getNode(id) as SyntaxNode;
         if ((node as any).type === 'word') {
             throw new Error('Cannot delete word node');
         }
@@ -185,6 +200,8 @@ export class SyntaxTree {
         const parent = this.getParentNode(id);
         const nodeIndexInParent = parent.contents.indexOf(node);
         parent.contents.splice(nodeIndexInParent, 1, ...children);
+
+        this.mapNodes();
     }
 
     insertBoxAtRange(start: number, end: number): ({ status: 'error' } | { innermostUntouchedId: NodeId, status: 'success' }) {
@@ -200,12 +217,15 @@ export class SyntaxTree {
 
         const newNode = this.buildNode({ function: null, category: null, contents: [] }) as SyntaxNode;
         newNode.contents = nodesToMove;
+        newNode.startToken = start; newNode.endToken = end;
 
         parentOfInserted.contents.splice(
             parentOfInserted.contents.indexOf(nodesToMove[0]),
             nodesToMove.length,
             newNode
         );
+
+        this.mapNodes();
 
         return {
             innermostUntouchedId: parentOfInserted.id,

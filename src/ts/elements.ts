@@ -1,15 +1,17 @@
 import { SyntaxNode, WordNode, RootNode, AnalysisData, NodeId } from "./tree";
 
 abstract class BoxNodeEl extends HTMLElement {
-    type = 'box';
+    type: 'box' = 'box';
+    nodeId: NodeId;
     protected abstract childrenEl: HTMLDivElement;
 
     constructor() {
         super();
+        this.nodeId = -1;
     }
 
     build(node: SyntaxNode | RootNode): Map<NodeId, AnyNodeEl> {
-        this.id = `node ${node.id}`;
+        this.nodeId = node.id;
 
         return this.renderInside(node.contents).set(node.id, this);
     }
@@ -55,7 +57,6 @@ export class SyntaxNodeEl extends BoxNodeEl {
     protected childrenEl: HTMLDivElement;
     private analysisEl: HTMLDivElement;
     private analysisElInside: AnalysisEls;
-    private currentAnalysis: AnalysisData = { category: null, function: null, comment: null };
 
     constructor() {
         super();
@@ -109,19 +110,9 @@ export class SyntaxNodeEl extends BoxNodeEl {
     }
 
     setAnalysis(analysis: AnalysisData) { // Implemented in a way that undefined values won't overwrite existing values
-        function newAnalysisPart(currentPart?: string | null, newPart?: string | null): string | null {
-            if (newPart === null) {
-                return null;
-            } else if (newPart === undefined) {
-                return (!currentPart) ? null : currentPart;
-            }
-            return newPart;
-        }
-        const newCateg = newAnalysisPart(this.currentAnalysis.category, analysis.category);
-        const newFunc = newAnalysisPart(this.currentAnalysis.function, analysis.function);
-        const newComment = newAnalysisPart(this.currentAnalysis.comment, analysis.comment);
-
-        this.currentAnalysis = { category: newCateg, function: newFunc, comment: newComment };
+        const newCateg = analysis.category;
+        const newFunc = analysis.function;
+        const newComment = analysis.comment;
 
         const slashVisible = (!!newCateg && !!newFunc);
         this.analysisElInside.slashEl.style.display = (slashVisible) ? '' : 'none';
@@ -133,23 +124,24 @@ export class SyntaxNodeEl extends BoxNodeEl {
         this.analysisElInside.commentEl.textContent = newComment ?? '';
     }
 
-    startEdit(part?: 'category' | 'function' | 'comment'): 'category' | 'function' | 'comment' {
+    startEdit(): InputFieldEls {
         this.analysisEl.classList.add('editing');
-
-        if (!part) part = 'category';
-        // No sé cómo colocar el cursor en el lugar apropiado o lo que sea
-
-        return part;
+        return {
+            category: this.analysisElInside.catInputEl,
+            function: this.analysisElInside.funcInputEl,
+            comment: this.analysisElInside.commentInputEl
+        };
     }
 
-    endEdit(): AnalysisData {
+    finishEdit(): AnalysisData {
         this.analysisEl.classList.remove('editing');
 
-        return {
+        const newAnalysis = {
             category: popContent(this.analysisElInside.catInputEl),
             function: popContent(this.analysisElInside.funcInputEl),
             comment: popContent(this.analysisElInside.commentInputEl),
         }
+        return newAnalysis;
     }
 }
 
@@ -164,7 +156,8 @@ interface AnalysisEls {
 }
 
 export class WordNodeEl extends HTMLElement {
-    type = 'word';
+    type: 'word' = 'word';
+    nodeId: NodeId;
     private wordEl: HTMLDivElement;
     private commentEl: HTMLDivElement;
     private wordInputEl: HTMLInputElement;
@@ -173,6 +166,7 @@ export class WordNodeEl extends HTMLElement {
 
     constructor() {
         super();
+        this.nodeId = -1;
 
         this.innerHTML = `
             <div class = "word-node">
@@ -191,7 +185,7 @@ export class WordNodeEl extends HTMLElement {
     }
 
     build(node: WordNode): Map<NodeId, AnyNodeEl> {
-        this.id = `node ${node.id}`;
+        this.nodeId = node.id;
         this.wordEl.textContent = node.word;
         
         this.setComment(node.comment);
@@ -215,16 +209,12 @@ export class WordNodeEl extends HTMLElement {
         this.classList.remove('selected');
     }
 
-    startEdit(part?: 'word' | 'comment'): 'word' | 'comment' {
+    startEdit(): InputFieldEls {
         this.classList.add('editing');
-
-        if (!part) part = 'word';
-        // No sé cómo colocar el cursor en el lugar apropiado o lo que sea
-
-        return part;
+        return { word: this.wordInputEl, comment: this.commentInputEl };
     }
 
-    endEdit(): WordNodeData {
+    finishEdit(): WordNodeData {
         this.classList.remove('editing');
 
         return {
@@ -232,6 +222,13 @@ export class WordNodeEl extends HTMLElement {
             comment: popContent(this.commentInputEl)
         };
     }
+}
+
+export interface InputFieldEls {
+    category?: HTMLInputElement;
+    function?: HTMLInputElement;
+    word?: HTMLInputElement;
+    comment: HTMLInputElement;
 }
 
 export type AnyNodeEl = RootNodeEl | SyntaxNodeEl | WordNodeEl | BoxNodeEl;

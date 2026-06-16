@@ -1,98 +1,139 @@
-import { AnyNodeEl, RootNodeEl, SyntaxNodeEl, WordNodeEl } from "./elements";
-import { ReducedJSON, RootNode, SyntaxNode, SyntaxTree, WordNode, NodeId } from "./tree";
+import { AnyNodeEl, InputFieldEls, RootNodeEl, SyntaxNodeEl, WordNodeData, WordNodeEl } from "./elements";
+import { AnalysisData, NodeId, ReducedJSON, SyntaxNode, SyntaxTree, WordNode } from "./tree";
 
 export class SyntaxEditor {
-    private tree: SyntaxTree;
-    private rootElement: RootNodeEl;
+    tree: SyntaxTree;
+    rootEl: RootNodeEl;
+    elementMapping: Map<NodeId, AnyNodeEl> = new Map();
 
-    private nodeElementMap: Map<NodeId, AnyNodeEl>;
+    state: state = {
+        selectedNodeId: null,
+        editing: {
+            isEditing: false,
+            type: null,
+            field: null,
+            elements: null
+        }
+    };
 
-    private state: EditorState;
-
-    constructor(tree: ReducedJSON) {
-        this.tree = new SyntaxTree(tree);
-
-        this.state = {
-            selectedNodeId: null,
-            editingNodeId: null,
-            editingNodeData: {
-                type: null,
-                field: null
-            }
-        };
-        
-        this.rootElement = document.createElement('root-node') as RootNodeEl;
-        this.nodeElementMap = this.rootElement.build(this.tree.toJSON());
-
-        const editorContainer = document.getElementById('editor-container') as HTMLDivElement;
-        editorContainer.replaceChildren(this.rootElement);
+    constructor(json: ReducedJSON) {
+        this.tree = new SyntaxTree(json);
+        this.rootEl = new RootNodeEl();
+        this.renderTree();
     }
 
-    private rerenderNode(id: NodeId) {
-        const element = this.nodeElementMap.get(id)!;
-        const node = this.tree.getNode(id)!;
+    private renderTree() {
+        this.elementMapping = this.rootEl.build(this.tree.getJSON());
+        if (this.state.selectedNodeId) {
+            this.selectNode(this.state.selectedNodeId);
+        }
+    }
 
-        let newElementMap: Map<NodeId, AnyNodeEl>;
-        if (element instanceof WordNodeEl) {
-            newElementMap = element.build(node as WordNode);
-        } else if (element instanceof SyntaxNodeEl) {
-            newElementMap = element.build(node as SyntaxNode);
-        } else {
-            newElementMap = element.build(node as RootNode);
-        }
-        for (const [id, el] of newElementMap) {
-            this.nodeElementMap.set(id, el);
-        }
+    private installListeners() {
+        // TODO: Listen for clicks on rootEl and keyboard shortcuts
     }
 
     private selectNode(id: number | null) {
-        const oldSelected = this.state.selectedNodeId;
-        if (oldSelected !== null) {
-            const oldElement = this.nodeElementMap.get(oldSelected) as EditableNodeEl;
+        const oldSelectedId = this.state.selectedNodeId;
+        if (oldSelectedId !== null) {
+            const oldElement = this.elementMapping.get(oldSelectedId) as EditableNodeEl;
             oldElement.deselect();
         }
 
         if (id !== null) {
-            const newElement = this.nodeElementMap.get(id) as EditableNodeEl;
+            const newElement = this.elementMapping.get(id) as EditableNodeEl;
             newElement.select();
         }
         this.state.selectedNodeId = id;
     }
 
-    private setEditingNode(id: number | null, field?: 'category' | 'function' | 'word' | 'comment') {
-        this.selectNode(id);
-        const oldEditing = this.state.editingNodeId;
-        if (oldEditing !== null) {
-            const oldElement = this.nodeElementMap.get(oldEditing) as EditableNodeEl;
-            oldElement.endEdit();
+    private startEditing() {
+        const id = this.state.selectedNodeId;
+        if (id === null) throw new Error("Cannot edit unselected node");
+
+        const element = this.elementMapping.get(id) as SyntaxNodeEl | WordNodeEl;
+        this.state.editing = {
+            isEditing: true,
+            elements: element.startEdit(),
+            type: element.type,
+            field: null
+        };
+
+        // TODO: Set field to clicked field
+        let field: state['editing']['field'];
+        if (element.type === 'word') {
+            field = 'word';
+            this.state.editing.elements?.word?.focus();
+        } else {
+            field = 'category';
+            this.state.editing.elements?.category?.focus();
         }
 
-        let newField: EditingNodeData['field'] = null;
-        let type: EditingNodeData['type'] = null;
-        if (id !== null) {
-            const newElement = this.nodeElementMap.get(id) as EditableNodeEl;
-            if (newElement instanceof WordNodeEl) {
-                newField = newElement.startEdit(field as 'word' | 'comment' | undefined);
-                type = 'word';
-            } else {
-                newField = newElement.startEdit(field as 'category' | 'function' | 'comment' | undefined);
-                type = 'box';
-            }
+        this.state.editing.field = field;
+    }
+
+    private finishEditing() {
+        const id = this.state.selectedNodeId;
+        if (id === null) throw new Error("Cannot edit unselected node");
+
+        const element = this.elementMapping.get(id) as SyntaxNodeEl | WordNodeEl;
+        const node = this.tree.getNode(id);
+
+        const analysis = element.finishEdit();
+        if (element.type === 'word') { // TODO: Delete/Create node
+            const wNode = node as WordNode; const wAnalysis = analysis as WordNodeData;
+
+            wNode.word = wAnalysis.word ?? 'TODO'; // Thish should actually delete the node if null...
+            wNode.comment = wAnalysis.comment;
         }
-        this.state.editingNodeId = id;
-        this.state.editingNodeData = { type, field: newField };
+        else {
+            const sNode = node as SyntaxNode; const sAnalysis = analysis as AnalysisData;
+            
+            sNode.category = sAnalysis.category!;
+            sNode.function = sAnalysis.function!;
+            sNode.comment = sAnalysis.comment;
+        }
+
+        this.renderTree();
+    }
+
+    private deleteNode() {
+        this.doDeleteAction(false);
+    }
+
+    private promoteChildren() {
+        this.doDeleteAction(true);
+    }
+
+    private doDeleteAction(keepChildren: boolean) {
+        const id = this.state.selectedNodeId;
+        if (id === null) return;
+        const selected = this.tree.getNode(id);
+        if (selected.type === 'word') return;
+
+        if (keepChildren) {
+            this.tree.promoteChildren(id);
+        } else {
+            this.tree.deleteNode(id);
+        }
+
+        const parentId = this.tree.getParentId(id);
+        this.state.selectedNodeId = null; // So that selectNode doesn't deselect unexistent element
+        this.selectNode((parentId === 'root') ? null : parentId);
+        this.renderTree();
     }
 }
 
 type EditableNodeEl = SyntaxNodeEl | WordNodeEl;
 
-interface EditorState {
+interface state {
     selectedNodeId: number | null;
-    editingNodeId: number | null;
-    editingNodeData: EditingNodeData;
+    editing: EditingNodeData;
 }
 
 interface EditingNodeData {
+    isEditing: boolean;
     type: 'word' | 'box' | null;
     field: 'category' | 'function' | 'comment' | 'word' | null;
+    elements: InputFieldEls | null;
 }
