@@ -1,3 +1,5 @@
+import { exampleSentence } from "../shared/consts.js";
+
 export class SyntaxTree {
     private tree: RootNode;
     private idCounter: number = 0;
@@ -6,7 +8,7 @@ export class SyntaxTree {
     private parentNodeMap: Map<number, NodeId>;
 
     constructor(json?: ReducedJSON) {
-        this.tree = this.buildTreeFromReduced(json ?? [{ contents: '∅' }]);
+        this.tree = this.buildTreeFromReduced(json ?? [{ cont: '∅' }]);
 
         this.nodeMap = new Map();
         this.parentNodeMap = new Map();
@@ -32,26 +34,26 @@ export class SyntaxTree {
         if (this.tokenCounter === null) {
             this.tokenCounter = 0;
         }
-        if (typeof node.contents === 'string') {
+        if (typeof node.cont === 'string') {
             this.tokenCounter++;
             return {
                 id: this.newId(),
                 type: 'word',
                 token: this.tokenCounter,
-                word: node.contents,
-                comment: node.comment
+                word: node.cont,
+                comment: node.com
             };
         }
-        const contents = node.contents.map(child => this.buildNode(child));
+        const contents = node.cont.map(child => this.buildNode(child));
         const { startToken, endToken } = this.getTokenRangeFromChildren(contents);
         return {
             id: this.newId(),
             type: 'box',
             startToken,
             endToken,
-            function: (node as ReducedSyntaxBox).function,
-            category: (node as ReducedSyntaxBox).category,
-            comment: node.comment,
+            function: (node as ReducedSyntaxBox).fun,
+            category: (node as ReducedSyntaxBox).cat,
+            comment: node.com,
             contents
         };
     }
@@ -112,15 +114,15 @@ export class SyntaxTree {
     private reduceNode(node: SyntaxNode | WordNode): ReducedSyntaxNode {
         if (node.type === 'word') {
             return {
-                comment: node.comment,
-                contents: node.word
+                com: node.comment,
+                cont: node.word
             };
         }
         return {
-            function: node.function,
-            category: node.category,
-            comment: node.comment,
-            contents: node.contents.map(child => this.reduceNode(child))
+            fun: node.function,
+            cat: node.category,
+            com: node.comment,
+            cont: node.contents.map(child => this.reduceNode(child))
         };
     }
 
@@ -215,7 +217,7 @@ export class SyntaxTree {
 
         const nodesToMove = nodesInRange(children, startNode, endNode);
 
-        const newNode = this.buildNode({ function: null, category: null, contents: [] }) as SyntaxNode;
+        const newNode = this.buildNode({ fun: null, cat: null, cont: [] }) as SyntaxNode;
         newNode.contents = nodesToMove;
         newNode.startToken = start; newNode.endToken = end;
 
@@ -275,6 +277,18 @@ export class SyntaxTree {
     }
 }
 
+export function sentenceToReducedJSON(sentence: string): ReducedJSON | null {
+    if (sentence) {
+        sentence.trim();
+        if (!sentence) return null;
+    } else {
+        sentence = exampleSentence;
+    }
+
+    const words = sentence.split(/\s+/);
+    return words.map(word => { return {cont: word} });
+}
+
 
 
 export interface SyntaxNode {
@@ -305,15 +319,15 @@ export interface RootNode {
 }
 
 export interface ReducedSyntaxBox {
-    function: string | null;
-    category: string | null;
-    comment?: string | null;
-    contents: ReducedSyntaxNode[]
+    fun: string | null;
+    cat: string | null;
+    com?: string | null;
+    cont: ReducedSyntaxNode[]
 }
 
 export interface ReducedWord {
-    comment?: string | null;
-    contents: string;
+    com?: string | null;
+    cont: string;
 }
 
 export type ReducedSyntaxNode = ReducedSyntaxBox | ReducedWord;

@@ -1,0 +1,1 @@
+export const exampleSentence = "Mi gato come pescado";

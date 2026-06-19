@@ -1,5 +1,5 @@
-import { AnyNodeEl, InputFieldEls, RootNodeEl, SyntaxNodeEl, WordNodeData, WordNodeEl } from "./elements";
-import { AnalysisData, NodeId, ReducedJSON, SyntaxNode, SyntaxTree, WordNode } from "./tree";
+import { AnyNodeEl, InputFieldEls, RootNodeEl, SyntaxNodeEl, WordNodeData, WordNodeEl } from "./elements.js";
+import { AnalysisData, NodeId, ReducedJSON, SyntaxNode, SyntaxTree, WordNode } from "./tree.js";
 
 export class SyntaxEditor {
     tree: SyntaxTree;
@@ -18,12 +18,18 @@ export class SyntaxEditor {
 
     constructor(json: ReducedJSON) {
         this.tree = new SyntaxTree(json);
-        this.rootEl = new RootNodeEl();
+        this.rootEl = document.createElement('root-node') as RootNodeEl;
+    }
+
+    mount(container: HTMLDivElement) {
+        container.appendChild(this.rootEl);
         this.renderTree();
     }
 
     private renderTree() {
-        this.elementMapping = this.rootEl.build(this.tree.getJSON());
+        const json = this.tree.getJSON();
+        console.log(json);
+        this.elementMapping = this.rootEl.build(json);
         if (this.state.selectedNodeId) {
             this.selectNode(this.state.selectedNodeId);
         }

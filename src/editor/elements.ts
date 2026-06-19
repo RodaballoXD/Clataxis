@@ -1,4 +1,4 @@
-import { SyntaxNode, WordNode, RootNode, AnalysisData, NodeId } from "./tree";
+import { SyntaxNode, WordNode, RootNode, AnalysisData, NodeId } from "./tree.js";
 
 abstract class BoxNodeEl extends HTMLElement {
     type: 'box' = 'box';
@@ -19,20 +19,22 @@ abstract class BoxNodeEl extends HTMLElement {
     renderInside(contents: (SyntaxNode | WordNode)[]): Map<NodeId, AnyNodeEl> {
         const elementMap = new Map<NodeId, AnyNodeEl>();
 
+        console.log(contents);
         this.childrenEl.replaceChildren();
+        console.log(this.childrenEl);
         for (const child of contents) {
             if (child.type === 'word') {
                 const wordEl = document.createElement('word-node') as WordNodeEl;
+                this.childrenEl.appendChild(wordEl);
                 wordEl.build(child);
 
-                this.childrenEl.appendChild(wordEl);
                 elementMap.set(child.id, wordEl);
                 continue;
             }
             const childEl = document.createElement('syntax-node') as SyntaxNodeEl;
+            this.childrenEl.appendChild(childEl);
             childEl.build(child);
 
-            this.childrenEl.appendChild(childEl);
             elementMap.set(child.id, childEl);
         }
         return elementMap;
@@ -44,6 +46,10 @@ export class RootNodeEl extends BoxNodeEl {
 
     constructor() {
         super();
+        this.childrenEl = document.createElement('div');
+    }
+
+    connectedCallback() {
         this.innerHTML = `
             <div class = "root-node">
                 <div class = "children"></div>
@@ -60,7 +66,10 @@ export class SyntaxNodeEl extends BoxNodeEl {
 
     constructor() {
         super();
+        this.childrenEl = document.createElement('div'); this.analysisEl = document.createElement('div'); this.analysisElInside = { categoryEl: document.createElement('span'), slashEl: document.createElement('span'), functionEl: document.createElement('span'), commentEl: document.createElement('span'), catInputEl: document.createElement('input'), funcInputEl: document.createElement('input'), commentInputEl: document.createElement('input') };
+    }
 
+    connectedCallback() {
         this.innerHTML = `
             <div class = "syntax-node">
                 <div class = "children"></div>
@@ -168,6 +177,10 @@ export class WordNodeEl extends HTMLElement {
         super();
         this.nodeId = -1;
 
+        this.wordEl = document.createElement('div'); this.commentEl = document.createElement('div'); this.wordInputEl = document.createElement('input'); this.commentInputEl = document.createElement('input');
+    }
+
+    connectedCallback() {
         this.innerHTML = `
             <div class = "word-node">
                 <div class = "comment"></div>
