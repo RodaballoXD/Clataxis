@@ -19,9 +19,7 @@ abstract class BoxNodeEl extends HTMLElement {
     renderInside(contents: (SyntaxNode | WordNode)[]): Map<NodeId, AnyNodeEl> {
         const elementMap = new Map<NodeId, AnyNodeEl>();
 
-        console.log(contents);
         this.childrenEl.replaceChildren();
-        console.log(this.childrenEl);
         for (const child of contents) {
             if (child.type === 'word') {
                 const wordEl = document.createElement('word-node') as WordNodeEl;
@@ -77,9 +75,9 @@ export class SyntaxNodeEl extends BoxNodeEl {
                 <div class = "analysis">
                     <input class="category-input" style="display: none">
 
-                    <span class = "category" style="display: none"></span>
+                    <span class = "category" ></span>
                     <span class = "slash" style="display: none">/</span>
-                    <span class = "function" style="display: none"></span>
+                    <span class = "function" ></span>
                     <span class = "comment" style="display: none"></span>
 
                     <input class="function-input" style="display: none">
@@ -118,7 +116,8 @@ export class SyntaxNodeEl extends BoxNodeEl {
         this.classList.remove('selected');
     }
 
-    setAnalysis(analysis: AnalysisData) { // Implemented in a way that undefined values won't overwrite existing values
+    setAnalysis(analysis: AnalysisData) {
+        console.log(analysis);
         const newCateg = analysis.category;
         const newFunc = analysis.function;
         const newComment = analysis.comment;
@@ -131,6 +130,7 @@ export class SyntaxNodeEl extends BoxNodeEl {
         this.analysisElInside.categoryEl.textContent = newCateg ?? '';
         this.analysisElInside.functionEl.textContent = newFunc ?? '';
         this.analysisElInside.commentEl.textContent = newComment ?? '';
+        console.log(this.analysisElInside);
     }
 
     startEdit(): InputFieldEls {

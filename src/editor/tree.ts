@@ -279,7 +279,7 @@ export class SyntaxTree {
 
 export function sentenceToReducedJSON(sentence: string): ReducedJSON | null {
     if (sentence) {
-        sentence.trim();
+        sentence = sentence.trim();
         if (!sentence) return null;
     } else {
         sentence = exampleSentence;

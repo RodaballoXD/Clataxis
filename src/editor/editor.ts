@@ -21,14 +21,13 @@ export class SyntaxEditor {
         this.rootEl = document.createElement('root-node') as RootNodeEl;
     }
 
-    mount(container: HTMLDivElement) {
+    mount(container: HTMLElement) {
         container.appendChild(this.rootEl);
         this.renderTree();
     }
 
     private renderTree() {
         const json = this.tree.getJSON();
-        console.log(json);
         this.elementMapping = this.rootEl.build(json);
         if (this.state.selectedNodeId) {
             this.selectNode(this.state.selectedNodeId);
