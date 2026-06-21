@@ -227,7 +227,7 @@ export class SyntaxTree {
 
         const nodesToMove = nodesInRange(children, startNode, endNode);
 
-        const newNode = this.buildNode({ fun: null, cat: null, cont: [] }, true) as SyntaxNode;
+        const newNode = this.buildNode({ fun: null, cat: null, cont: [] }, false) as SyntaxNode;
         newNode.contents = nodesToMove;
         newNode.startToken = start; newNode.endToken = end;
 
