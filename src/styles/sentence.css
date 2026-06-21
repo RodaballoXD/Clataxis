@@ -1,7 +1,8 @@
 #app {
-    min-height: 100vh;
+    height: 100vh;
     display: flex;
     flex-direction: column;
+    overflow: auto;
 }
 
 #enter-sentence-container {
@@ -10,6 +11,7 @@
 
 html {
     min-height: 100%;
+    overflow: hidden;
 }
 
 body {

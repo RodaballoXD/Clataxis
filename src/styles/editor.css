@@ -1,9 +1,15 @@
+#editor-container {
+    min-height: 0;
+}
+
 #editor-root-container {
     padding: 10vh 10vw;
     width: max-content;
+    min-width: 100%;
     height: max-content;
     display: grid;
     place-items: center;
+    box-sizing: border-box;
 }
 
 .children {
