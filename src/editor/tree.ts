@@ -1,3 +1,4 @@
+import { KeywordToken } from "typescript";
 import { exampleSentence } from "../shared/consts.js";
 
 export class SyntaxTree {
@@ -30,7 +31,7 @@ export class SyntaxTree {
         }
     }
 
-    private buildNode(node: ReducedSyntaxNode): SyntaxNode | WordNode {
+    private buildNode(node: ReducedSyntaxNode, getTokenRange = true): SyntaxNode | WordNode {
         if (this.tokenCounter === null) {
             this.tokenCounter = 0;
         }
@@ -45,7 +46,16 @@ export class SyntaxTree {
             };
         }
         const contents = node.cont.map(child => this.buildNode(child));
-        const { startToken, endToken } = this.getTokenRangeFromChildren(contents);
+
+        let startToken: number; let endToken: number;
+        if (getTokenRange) {
+            const range = this.getTokenRangeFromChildren(contents);
+            startToken = range.startToken; endToken = range.endToken;
+        }
+        else {
+            startToken = -1; endToken = -1;
+        }
+
         return {
             id: this.newId(),
             type: 'box',
@@ -136,7 +146,7 @@ export class SyntaxTree {
 
     getParentId(id: number): NodeId {
         const parentId = this.parentNodeMap.get(id);
-        if (!parentId) {
+        if (parentId === undefined) {
             throw new Error(`Id ${id} is not in parentMap`);
         }
         return parentId;
@@ -217,7 +227,7 @@ export class SyntaxTree {
 
         const nodesToMove = nodesInRange(children, startNode, endNode);
 
-        const newNode = this.buildNode({ fun: null, cat: null, cont: [] }) as SyntaxNode;
+        const newNode = this.buildNode({ fun: null, cat: null, cont: [] }, true) as SyntaxNode;
         newNode.contents = nodesToMove;
         newNode.startToken = start; newNode.endToken = end;
 

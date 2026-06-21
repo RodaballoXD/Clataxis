@@ -17,23 +17,22 @@ abstract class BoxNodeEl extends HTMLElement {
     }
 
     renderInside(contents: (SyntaxNode | WordNode)[]): Map<NodeId, AnyNodeEl> {
-        const elementMap = new Map<NodeId, AnyNodeEl>();
+        let elementMap = new Map<NodeId, AnyNodeEl>();
 
         this.childrenEl.replaceChildren();
         for (const child of contents) {
             if (child.type === 'word') {
                 const wordEl = document.createElement('word-node') as WordNodeEl;
                 this.childrenEl.appendChild(wordEl);
-                wordEl.build(child);
+                const innerMap = wordEl.build(child);
 
-                elementMap.set(child.id, wordEl);
+                elementMap = new Map([...elementMap, ...innerMap]);
                 continue;
             }
             const childEl = document.createElement('syntax-node') as SyntaxNodeEl;
             this.childrenEl.appendChild(childEl);
-            childEl.build(child);
-
-            elementMap.set(child.id, childEl);
+            const innerMap = childEl.build(child);
+            elementMap = new Map([...elementMap, ...innerMap]);
         }
         return elementMap;
     }
@@ -117,7 +116,6 @@ export class SyntaxNodeEl extends BoxNodeEl {
     }
 
     setAnalysis(analysis: AnalysisData) {
-        console.log(analysis);
         const newCateg = analysis.category;
         const newFunc = analysis.function;
         const newComment = analysis.comment;
@@ -130,7 +128,6 @@ export class SyntaxNodeEl extends BoxNodeEl {
         this.analysisElInside.categoryEl.textContent = newCateg ?? '';
         this.analysisElInside.functionEl.textContent = newFunc ?? '';
         this.analysisElInside.commentEl.textContent = newComment ?? '';
-        console.log(this.analysisElInside);
     }
 
     startEdit(): InputFieldEls {

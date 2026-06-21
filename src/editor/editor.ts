@@ -6,7 +6,7 @@ export class SyntaxEditor {
     rootEl: RootNodeEl;
     elementMapping: Map<NodeId, AnyNodeEl> = new Map();
 
-    state: state = {
+    state: EditorState = {
         selectedNodeId: null,
         editing: {
             isEditing: false,
@@ -29,7 +29,7 @@ export class SyntaxEditor {
     private renderTree() {
         const json = this.tree.getJSON();
         this.elementMapping = this.rootEl.build(json);
-        if (this.state.selectedNodeId) {
+        if (this.state.selectedNodeId !== null) {
             this.selectNode(this.state.selectedNodeId);
         }
     }
@@ -65,7 +65,7 @@ export class SyntaxEditor {
         };
 
         // TODO: Set field to clicked field
-        let field: state['editing']['field'];
+        let field: EditorState['editing']['field'];
         if (element.type === 'word') {
             field = 'word';
             this.state.editing.elements?.word?.focus();
@@ -88,7 +88,7 @@ export class SyntaxEditor {
         if (element.type === 'word') { // TODO: Delete/Create node
             const wNode = node as WordNode; const wAnalysis = analysis as WordNodeData;
 
-            wNode.word = wAnalysis.word ?? 'TODO'; // Thish should actually delete the node if null...
+            wNode.word = wAnalysis.word ?? 'TODO'; // This should actually delete the node if null...
             wNode.comment = wAnalysis.comment;
         }
         else {
@@ -115,6 +115,8 @@ export class SyntaxEditor {
         if (id === null) return;
         const selected = this.tree.getNode(id);
         if (selected.type === 'word') return;
+        
+        const parentId = this.tree.getParentId(id);
 
         if (keepChildren) {
             this.tree.promoteChildren(id);
@@ -122,7 +124,6 @@ export class SyntaxEditor {
             this.tree.deleteNode(id);
         }
 
-        const parentId = this.tree.getParentId(id);
         this.state.selectedNodeId = null; // So that selectNode doesn't deselect unexistent element
         this.selectNode((parentId === 'root') ? null : parentId);
         this.renderTree();
@@ -131,7 +132,7 @@ export class SyntaxEditor {
 
 type EditableNodeEl = SyntaxNodeEl | WordNodeEl;
 
-interface state {
+interface EditorState {
     selectedNodeId: number | null;
     editing: EditingNodeData;
 }
