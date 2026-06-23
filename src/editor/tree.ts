@@ -216,7 +216,7 @@ export class SyntaxTree {
         this.mapNodes();
     }
 
-    insertBoxAtRange(start: number, end: number): ({ status: 'error' } | { innermostUntouchedId: NodeId, status: 'success' }) {
+    insertBoxAtRange(start: number, end: number): ({ status: 'error' } | { innermostUntouchedId: NodeId, newNodeId: number, status: 'success' }) {
         const root = this.tree;
         const parentOfInserted = findParentForRange(root, start, end);
         if (!parentOfInserted) return { status: 'error' };
@@ -241,6 +241,7 @@ export class SyntaxTree {
 
         return {
             innermostUntouchedId: parentOfInserted.id,
+            newNodeId: newNode.id,
             status: 'success'
         };
 

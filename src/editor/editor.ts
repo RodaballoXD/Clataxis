@@ -4,6 +4,7 @@ import { AnalysisData, NodeId, ReducedJSON, SyntaxNode, SyntaxTree, WordNode } f
 export class SyntaxEditor {
     tree: SyntaxTree;
     rootEl: RootNodeEl;
+    appEl: HTMLDivElement;
     elementMapping: Map<NodeId, AnyNodeEl> = new Map();
 
     state: EditorState = {
@@ -13,17 +14,28 @@ export class SyntaxEditor {
             type: null,
             field: null,
             elements: null
+        },
+        pointer: {
+            isDragging: false,
+            pointerId: null,
+            startWordToken: null,
+            endWordToken: null,
+            currentWordId: null,
+            didMove: false,
+            startMousePosition: null
         }
     };
 
     constructor(json: ReducedJSON) {
         this.tree = new SyntaxTree(json);
         this.rootEl = document.createElement('root-node') as RootNodeEl;
+        this.appEl = document.getElementById('app') as HTMLDivElement;
     }
 
     mount(container: HTMLElement) {
         container.appendChild(this.rootEl);
         this.renderTree();
+        this.installListeners();
     }
 
     private renderTree() {
@@ -35,10 +47,117 @@ export class SyntaxEditor {
     }
 
     private installListeners() {
-        // TODO: Listen for clicks on rootEl and keyboard shortcuts
+        this.appEl.addEventListener('pointerdown', this.onPointerDown);
+        this.appEl.addEventListener('pointermove', this.onPoinerMove);
+        this.appEl.addEventListener('pointerup', this.onPointerUp);
+    }
+
+    private onPointerDown = (event: PointerEvent) => {
+        const clicked = this.getClickedNode(event);
+
+        if (clicked.type === null) {
+            this.selectNode(null);
+        }
+
+        else if (clicked.type === 'syntax') {
+            const clickedId = clicked.nodeEl.nodeId as number;
+            if (clickedId === this.state.selectedNodeId) {
+                this.startEditing();
+                return;
+            }
+            this.selectNode(clickedId);
+        }
+
+        else if (clicked.type === 'word') {
+            const wordToken = (this.tree.getNode(clicked.nodeEl.nodeId) as WordNode).token;
+            this.state.pointer.isDragging = true;
+            this.state.pointer.startWordToken = wordToken;
+            this.state.pointer.endWordToken = wordToken;
+            this.state.pointer.startMousePosition = this.getMousePosition(event);
+            this.appEl.setPointerCapture(event.pointerId);
+        }
+    }
+
+    private onPoinerMove = (event: PointerEvent) => {
+        if (!this.state.pointer.isDragging) return;
+
+        const MIN_PIXELS_MOVED = 20;
+        
+        const currentPos = this.getMousePosition(event);
+        const didMove = (distance(this.state.pointer.startMousePosition, currentPos) > MIN_PIXELS_MOVED);
+        this.state.pointer.didMove ||= didMove;
+        
+        let endWordToken: number;
+        const clicked = this.getClickedNode(event);
+        if (clicked.type !== 'word') {
+            endWordToken = (this.state.pointer.endWordToken as number | null) ?? this.state.pointer.startWordToken;
+        } else {
+            endWordToken = (this.tree.getNode(clicked.nodeEl.nodeId) as WordNode).token;
+        }
+        this.state.pointer.endWordToken = endWordToken;
+
+        function distance(pos1: Position, pos2: Position): number {
+            const dx = pos1.x - pos2.x;
+            const dy = pos1.y - pos2.y;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+    }
+
+    private onPointerUp = (event: PointerEvent) => {
+        if (!this.state.pointer.isDragging) return;
+
+        if (!this.state.pointer.didMove) {
+            this.clearPointerState();
+            const clickedId = this.getClickedNode(event).nodeEl?.nodeId as number;
+            if (this.state.selectedNodeId === clickedId) {
+                this.startEditing();
+                return;
+            }
+            this.selectNode(clickedId);
+            return;
+        }
+
+        this.insertBoxAtRange(this.state.pointer.startWordToken, this.state.pointer.endWordToken);
+        this.clearPointerState();
+    }
+
+    private getClickedNode(event: PointerEvent): ClickedData {
+        const underPointer = document.elementFromPoint(event.clientX, event.clientY);
+        if (!underPointer) return { type: null, nodeEl: null };
+
+        const wordEl = underPointer?.closest('word-node') as WordNodeEl | null;
+        if (wordEl) return { type: 'word', nodeEl: wordEl };
+
+        const syntaxEl = underPointer?.closest('syntax-node') as SyntaxNodeEl | null;
+        if (syntaxEl) return { type: 'syntax', nodeEl: syntaxEl };
+
+        return { type: null, nodeEl: null };
+    }
+
+    private getMousePosition(event: PointerEvent): Position {
+        const rect = this.rootEl.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        return { x, y };
+    }
+
+    private clearPointerState() {
+        this.state.pointer = {
+            isDragging: false,
+            pointerId: null,
+            startWordToken: null,
+            endWordToken: null,
+            currentWordId: null,
+            didMove: false,
+            startMousePosition: null
+        };
     }
 
     private selectNode(id: number | null) {
+        if (this.state.editing.isEditing) {
+            this.finishEditing();
+        }
+
         const oldSelectedId = this.state.selectedNodeId;
         if (oldSelectedId !== null) {
             const oldElement = this.elementMapping.get(oldSelectedId) as EditableNodeEl;
@@ -53,6 +172,8 @@ export class SyntaxEditor {
     }
 
     private startEditing() {
+        console.log("Starting to edit");
+
         const id = this.state.selectedNodeId;
         if (id === null) throw new Error("Cannot edit unselected node");
 
@@ -78,6 +199,13 @@ export class SyntaxEditor {
     }
 
     private finishEditing() {
+        this.state.editing = {
+            isEditing: false,
+            type: null,
+            field: null,
+            elements: null
+        };
+
         const id = this.state.selectedNodeId;
         if (id === null) throw new Error("Cannot edit unselected node");
 
@@ -128,6 +256,17 @@ export class SyntaxEditor {
         this.selectNode((parentId === 'root') ? null : parentId);
         this.renderTree();
     }
+
+    private insertBoxAtRange(startToken: number, endToken: number) {
+        if (startToken > endToken) {
+            [endToken, startToken] = [startToken, endToken];
+        }
+        const insertedData = this.tree.insertBoxAtRange(startToken, endToken);
+        if (insertedData.status === 'error') return; // TODO: Message for user
+
+        this.renderTree();
+        this.selectNode(insertedData.newNodeId);
+    }
 }
 
 type EditableNodeEl = SyntaxNodeEl | WordNodeEl;
@@ -135,6 +274,7 @@ type EditableNodeEl = SyntaxNodeEl | WordNodeEl;
 interface EditorState {
     selectedNodeId: number | null;
     editing: EditingNodeData;
+    pointer: PointerData;
 }
 
 interface EditingNodeData {
@@ -142,4 +282,33 @@ interface EditingNodeData {
     type: 'word' | 'box' | null;
     field: 'category' | 'function' | 'comment' | 'word' | null;
     elements: InputFieldEls | null;
+}
+
+interface PointerDataActive {
+    isDragging: true;
+    pointerId: number;
+    startWordToken: number;
+    endWordToken: number;
+    currentWordId: number;
+    didMove: boolean;
+    startMousePosition: Position;
+}
+
+interface PointerDataInactive {
+    isDragging: false;
+    pointerId: null;
+    startWordToken: null;
+    endWordToken: null;
+    currentWordId: null;
+    didMove: false;
+    startMousePosition: null;
+}
+
+type PointerData = PointerDataActive | PointerDataInactive;
+
+type ClickedData = { type: null, nodeEl: null } | { type: 'word', nodeEl: WordNodeEl } | { type: 'syntax', nodeEl: SyntaxNodeEl };
+
+interface Position {
+    x: number;
+    y: number;
 }

@@ -72,15 +72,15 @@ export class SyntaxNodeEl extends BoxNodeEl {
                 <div class = "children"></div>
                 <div class = "line"></div>
                 <div class = "analysis">
-                    <input class="category-input" style="display: none">
+                    <input class="category-input">
 
                     <span class = "category" ></span>
                     <span class = "slash" style="display: none">/</span>
-                    <span class = "function" ></span>
+                    <span class = "function"></span>
                     <span class = "comment" style="display: none"></span>
 
-                    <input class="function-input" style="display: none">
-                    <input class="comment-input" style="display: none">
+                    <input class="function-input">
+                    <input class="comment-input">
                 </div>
             </div>
         `;
@@ -124,6 +124,9 @@ export class SyntaxNodeEl extends BoxNodeEl {
         this.analysisElInside.slashEl.style.display = (slashVisible) ? '' : 'none';
         const commentVisible = !!newComment;
         this.analysisElInside.commentEl.style.display = (commentVisible) ? '' : 'none';
+        const commentMargin = (commentVisible && (!!newCateg || !!newFunc));
+        if (commentMargin) this.analysisElInside.commentEl.classList.add('left-margin');
+        else this.analysisElInside.commentEl.classList.remove('left-margin');
 
         this.analysisElInside.categoryEl.textContent = newCateg ?? '';
         this.analysisElInside.functionEl.textContent = newFunc ?? '';
@@ -132,6 +135,13 @@ export class SyntaxNodeEl extends BoxNodeEl {
 
     startEdit(): InputFieldEls {
         this.analysisEl.classList.add('editing');
+
+        this.analysisElInside.catInputEl.value = this.analysisElInside.categoryEl.textContent;
+        this.analysisElInside.funcInputEl.value = this.analysisElInside.functionEl.textContent;
+        this.analysisElInside.commentInputEl.value = this.analysisElInside.commentEl.textContent;
+
+        this.analysisElInside.slashEl.style.display = '';
+
         return {
             category: this.analysisElInside.catInputEl,
             function: this.analysisElInside.funcInputEl,
@@ -164,6 +174,7 @@ interface AnalysisEls {
 export class WordNodeEl extends HTMLElement {
     type: 'word' = 'word';
     nodeId: NodeId;
+    private containerEl: HTMLDivElement;
     private wordEl: HTMLDivElement;
     private commentEl: HTMLDivElement;
     private wordInputEl: HTMLInputElement;
@@ -174,24 +185,25 @@ export class WordNodeEl extends HTMLElement {
         super();
         this.nodeId = -1;
 
-        this.wordEl = document.createElement('div'); this.commentEl = document.createElement('div'); this.wordInputEl = document.createElement('input'); this.commentInputEl = document.createElement('input');
+        this.containerEl = document.createElement('div'); this.wordEl = document.createElement('div'); this.commentEl = document.createElement('div'); this.wordInputEl = document.createElement('input'); this.commentInputEl = document.createElement('input');
     }
 
     connectedCallback() {
         this.innerHTML = `
             <div class = "word-node">
-                <div class = "comment"></div>
+                <div class = "word-comment"></div>
                 <div class = "word"></div>
 
-                <input class = "comment-input"></input>
+                <input class = "word-comment-input"></input>
                 <input class = "word-input"></input>
             </div>
         `;
 
+        this.containerEl = this.querySelector('.word-node') as HTMLDivElement;
         this.wordEl = this.querySelector('.word') as HTMLDivElement;
-        this.commentEl = this.querySelector('.comment') as HTMLDivElement;
+        this.commentEl = this.querySelector('.word-comment') as HTMLDivElement;
         this.wordInputEl = this.querySelector('.word-input') as HTMLInputElement;
-        this.commentInputEl = this.querySelector('.comment-input') as HTMLInputElement;
+        this.commentInputEl = this.querySelector('.word-comment-input') as HTMLInputElement;
     }
 
     build(node: WordNode): Map<NodeId, AnyNodeEl> {
@@ -220,12 +232,12 @@ export class WordNodeEl extends HTMLElement {
     }
 
     startEdit(): InputFieldEls {
-        this.classList.add('editing');
+        this.containerEl.classList.add('editing');
         return { word: this.wordInputEl, comment: this.commentInputEl };
     }
 
     finishEdit(): WordNodeData {
-        this.classList.remove('editing');
+        this.containerEl.classList.remove('editing');
 
         return {
             word: popContent(this.wordInputEl),

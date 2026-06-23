@@ -3,7 +3,7 @@
 }
 
 #editor-root-container {
-    padding: 10vh 10vw;
+    padding: 7vh 10vw;
     width: max-content;
     min-width: 100%;
     height: max-content;
@@ -12,20 +12,40 @@
     box-sizing: border-box;
 }
 
+root-node {
+    min-height: 20vh;
+}
+
 .children {
     display: flex;
     justify-content: center;
     flex-grow: 1;
 }
 
-.word-input, .comment-input {
+input {
     display: none;
+}
+
+#sentence-input {
+    display: block;
 }
 
 .word-node {
     margin: 0 2rem;
     font-size: 2.4rem;
     font-weight: bold;
+    text-align: center;
+}
+
+.word-comment {
+    min-height: 1.5rem;
+    font-weight: 670;
+    font-size: 1.2rem;
+    color: #5b5b5b;
+}
+
+syntax-node {
+    width: 100%;
 }
 
 .syntax-node {
@@ -37,12 +57,36 @@
 
 .line {
     border-top: 2.4px solid #424242;
+    margin: 0.5rem 1rem 0;
+}
+
+.selected > .syntax-node > .line {
+    border-color: #a66c26;
+    box-shadow: 0 0 0 3px rgba(166, 108, 38, 0.12);
+}
+
+.editing > input {
+    display: block;
+    border-radius: 0.5rem;
+    background: none;
+    font-weight: 670;
+    font-size: 1.2rem;
+    field-sizing: content;
+    min-width: 2.5rem;
+    height: 1.2rem;
+}
+
+.editing > span:not(.slash),
+.editing > div {
+    display: none;
+}
+
+.comment .left-margin, .comment-input {
     margin-left: 1rem;
-    margin-right: 1rem;
 }
 
 .analysis {
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
     margin-left: 1rem;
     margin-right: 1rem;
     display: flex;
@@ -50,16 +94,17 @@
     gap: 0.25rem;
     font-weight: 670;
     font-size: 1.2rem;
+    min-height: 1.6rem;
 }
 
 .slash {
     color: #00000076;
 }
 
-.category {
+.category, .category-input {
     color: #7a4a1a;
 }
 
-.function {
+.function, .function-input {
     color: #2f6b7f;
 }

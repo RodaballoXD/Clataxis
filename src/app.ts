@@ -2,6 +2,7 @@ import { createEditorInterface } from "./editor/editor-screen.js";
 import { SyntaxEditor } from "./editor/editor.js";
 import { ReducedJSON, sentenceToReducedJSON } from "./editor/tree.js";
 import { createEnterSentenceEl } from "./enter-sentence/enter-sentence-screen.js";
+import { longReducedJSON } from "./shared/consts.js";
 
 export class App {
     private activeScreen: Screen = 'sentence';
@@ -26,7 +27,8 @@ export class App {
 
     private mountSentenceScreen() {
         const onComenzar = (sentence: string) => {
-            const json = sentenceToReducedJSON(sentence);
+            // const json = sentenceToReducedJSON(sentence);
+            const json = longReducedJSON;
             if (!json) return;
             this.setScreen('editor', json);
         };
