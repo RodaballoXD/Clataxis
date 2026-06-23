@@ -233,6 +233,8 @@ export class WordNodeEl extends HTMLElement {
 
     startEdit(): InputFieldEls {
         this.containerEl.classList.add('editing');
+        this.wordInputEl.value = this.wordEl.textContent;
+        this.commentInputEl.value = this.currentComment ?? '';
         return { word: this.wordInputEl, comment: this.commentInputEl };
     }
 

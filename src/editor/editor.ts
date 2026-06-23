@@ -79,7 +79,7 @@ export class SyntaxEditor {
     }
 
     private onPoinerMove = (event: PointerEvent) => {
-        if (!this.state.pointer.isDragging) return;
+        if (!this.state.pointer.isDragging || this.state.editing.isEditing) return;
 
         const MIN_PIXELS_MOVED = 20;
         
@@ -104,7 +104,7 @@ export class SyntaxEditor {
     }
 
     private onPointerUp = (event: PointerEvent) => {
-        if (!this.state.pointer.isDragging) return;
+        if (!this.state.pointer.isDragging || this.state.editing.isEditing) return;
 
         if (!this.state.pointer.didMove) {
             this.clearPointerState();
@@ -125,11 +125,12 @@ export class SyntaxEditor {
         const underPointer = document.elementFromPoint(event.clientX, event.clientY);
         if (!underPointer) return { type: null, nodeEl: null };
 
+        const wordContEl = underPointer?.closest('.word-node') as HTMLDivElement | null; // whitespace of 'word-node' should return null
         const wordEl = underPointer?.closest('word-node') as WordNodeEl | null;
-        if (wordEl) return { type: 'word', nodeEl: wordEl };
+        if (wordEl && wordContEl) return { type: 'word', nodeEl: wordEl };
 
         const syntaxEl = underPointer?.closest('syntax-node') as SyntaxNodeEl | null;
-        if (syntaxEl) return { type: 'syntax', nodeEl: syntaxEl };
+        if (syntaxEl && !wordEl) return { type: 'syntax', nodeEl: syntaxEl };
 
         return { type: null, nodeEl: null };
     }
