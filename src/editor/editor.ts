@@ -20,7 +20,6 @@ export class SyntaxEditor {
             pointerId: null,
             startWordToken: null,
             endWordToken: null,
-            currentWordId: null,
             didMove: false,
             startMousePosition: null
         }
@@ -54,27 +53,30 @@ export class SyntaxEditor {
 
     private onPointerDown = (event: PointerEvent) => {
         const clicked = this.getClickedNode(event);
+        
+        if (clicked.type === 'word') {
+            const wordToken = (this.tree.getNode(clicked.nodeEl.nodeId) as WordNode).token;
+            this.state.pointer = {
+                isDragging: true,
+                didMove: false,
+                pointerId: event.pointerId,
+                startWordToken: wordToken,
+                endWordToken: wordToken,
+                startMousePosition: this.getMousePosition(event)
+            };
+            this.appEl.setPointerCapture(event.pointerId);
+            return;
+        }
 
+        if (clicked.didClickInput) return;
+        
         if (clicked.type === null) {
-            this.selectNode(null);
+            this.clickNode(null);
         }
 
         else if (clicked.type === 'syntax') {
             const clickedId = clicked.nodeEl.nodeId as number;
-            if (clickedId === this.state.selectedNodeId) {
-                this.startEditing();
-                return;
-            }
-            this.selectNode(clickedId);
-        }
-
-        else if (clicked.type === 'word') {
-            const wordToken = (this.tree.getNode(clicked.nodeEl.nodeId) as WordNode).token;
-            this.state.pointer.isDragging = true;
-            this.state.pointer.startWordToken = wordToken;
-            this.state.pointer.endWordToken = wordToken;
-            this.state.pointer.startMousePosition = this.getMousePosition(event);
-            this.appEl.setPointerCapture(event.pointerId);
+            this.clickNode(clickedId);
         }
     }
 
@@ -104,16 +106,14 @@ export class SyntaxEditor {
     }
 
     private onPointerUp = (event: PointerEvent) => {
-        if (!this.state.pointer.isDragging || this.state.editing.isEditing) return;
+        if (!this.state.pointer.isDragging) return;
 
         if (!this.state.pointer.didMove) {
             this.clearPointerState();
-            const clickedId = this.getClickedNode(event).nodeEl?.nodeId as number;
-            if (this.state.selectedNodeId === clickedId) {
-                this.startEditing();
-                return;
-            }
-            this.selectNode(clickedId);
+            const clicked = this.getClickedNode(event);
+            if (clicked.didClickInput) return;
+            const clickedId = clicked.nodeEl?.nodeId as number;
+            this.clickNode(clickedId ?? null);
             return;
         }
 
@@ -123,16 +123,21 @@ export class SyntaxEditor {
 
     private getClickedNode(event: PointerEvent): ClickedData {
         const underPointer = document.elementFromPoint(event.clientX, event.clientY);
-        if (!underPointer) return { type: null, nodeEl: null };
+        if (!underPointer) return { type: null, nodeEl: null, didClickInput: false };
+
+        const didClickInput = (
+            ['input', 'button', 'textarea']
+            .includes(underPointer.nodeName.toLowerCase())
+        );
 
         const wordContEl = underPointer?.closest('.word-node') as HTMLDivElement | null; // whitespace of 'word-node' should return null
         const wordEl = underPointer?.closest('word-node') as WordNodeEl | null;
-        if (wordEl && wordContEl) return { type: 'word', nodeEl: wordEl };
+        if (wordEl && wordContEl) return { type: 'word', nodeEl: wordEl, didClickInput };
 
         const syntaxEl = underPointer?.closest('syntax-node') as SyntaxNodeEl | null;
-        if (syntaxEl && !wordEl) return { type: 'syntax', nodeEl: syntaxEl };
+        if (syntaxEl && !wordEl) return { type: 'syntax', nodeEl: syntaxEl, didClickInput };
 
-        return { type: null, nodeEl: null };
+        return { type: null, nodeEl: null, didClickInput };
     }
 
     private getMousePosition(event: PointerEvent): Position {
@@ -148,17 +153,30 @@ export class SyntaxEditor {
             pointerId: null,
             startWordToken: null,
             endWordToken: null,
-            currentWordId: null,
             didMove: false,
             startMousePosition: null
         };
     }
 
-    private selectNode(id: number | null) {
-        if (this.state.editing.isEditing) {
-            this.finishEditing();
+    private clickNode(id: number | null) {
+        const prevSelected = this.state.selectedNodeId;
+        const clickedSame = (prevSelected === id) && (id !== null);
+        const wasEditing = this.state.editing.isEditing;
+        if (wasEditing && clickedSame) {
+            return;
+        }
+        if (!wasEditing && clickedSame) {
+            this.startEditing();
+            return;
         }
 
+        if (wasEditing && !clickedSame) {
+            this.finishEditing();
+        }
+        this.selectNode(id);
+    }
+
+    private selectNode(id: number | null) {
         const oldSelectedId = this.state.selectedNodeId;
         if (oldSelectedId !== null) {
             const oldElement = this.elementMapping.get(oldSelectedId) as EditableNodeEl;
@@ -173,8 +191,6 @@ export class SyntaxEditor {
     }
 
     private startEditing() {
-        console.log("Starting to edit");
-
         const id = this.state.selectedNodeId;
         if (id === null) throw new Error("Cannot edit unselected node");
 
@@ -290,7 +306,6 @@ interface PointerDataActive {
     pointerId: number;
     startWordToken: number;
     endWordToken: number;
-    currentWordId: number;
     didMove: boolean;
     startMousePosition: Position;
 }
@@ -300,14 +315,13 @@ interface PointerDataInactive {
     pointerId: null;
     startWordToken: null;
     endWordToken: null;
-    currentWordId: null;
     didMove: false;
     startMousePosition: null;
 }
 
 type PointerData = PointerDataActive | PointerDataInactive;
 
-type ClickedData = { type: null, nodeEl: null } | { type: 'word', nodeEl: WordNodeEl } | { type: 'syntax', nodeEl: SyntaxNodeEl };
+type ClickedData = { type: null, nodeEl: null, didClickInput: boolean } | { type: 'word', nodeEl: WordNodeEl, didClickInput: boolean } | { type: 'syntax', nodeEl: SyntaxNodeEl, didClickInput: boolean };
 
 interface Position {
     x: number;

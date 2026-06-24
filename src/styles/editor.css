@@ -75,7 +75,7 @@ syntax-node {
     display: none;
 }
 
-.comment .left-margin, .comment-input {
+.comment.left-margin, .comment-input {
     margin-left: 1rem;
 }
 

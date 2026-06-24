@@ -1,4 +1,3 @@
-import { KeywordToken } from "typescript";
 import { exampleSentence } from "../shared/consts.js";
 
 export class SyntaxTree {

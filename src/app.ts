@@ -28,7 +28,7 @@ export class App {
     private mountSentenceScreen() {
         const onComenzar = (sentence: string) => {
             // const json = sentenceToReducedJSON(sentence);
-            const json = longReducedJSON;
+            const json = longReducedJSON; // For testing right now; TODO remove
             if (!json) return;
             this.setScreen('editor', json);
         };
