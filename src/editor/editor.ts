@@ -5,6 +5,7 @@ export class SyntaxEditor {
     tree: SyntaxTree;
     rootEl: RootNodeEl;
     appEl: HTMLDivElement;
+    private selectionActionsEl: HTMLDivElement;
     elementMapping: Map<NodeId, AnyNodeEl> = new Map();
 
     state: EditorState = {
@@ -29,6 +30,7 @@ export class SyntaxEditor {
         this.tree = new SyntaxTree(json);
         this.rootEl = document.createElement('root-node') as RootNodeEl;
         this.appEl = document.getElementById('app') as HTMLDivElement;
+        this.selectionActionsEl = this.createSelectionActions();
     }
 
     mount(container: HTMLElement) {
@@ -47,12 +49,41 @@ export class SyntaxEditor {
 
     private installListeners() {
         this.appEl.addEventListener('pointerdown', this.onPointerDown);
-        this.appEl.addEventListener('pointermove', this.onPoinerMove);
+        this.appEl.addEventListener('pointermove', this.onPointerMove);
         this.appEl.addEventListener('pointerup', this.onPointerUp);
+    }
+
+    private createSelectionActions(): HTMLDivElement {
+        const actionsEl = document.createElement('div');
+        actionsEl.className = 'node-action-buttons';
+        actionsEl.setAttribute('aria-label', 'Acciones del nodo seleccionado');
+
+        const deleteButtonEl = document.createElement('button');
+        deleteButtonEl.type = 'button';
+        deleteButtonEl.textContent = '🗑';
+        deleteButtonEl.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this.deleteNode();
+        });
+
+        const promoteButtonEl = document.createElement('button');
+        promoteButtonEl.type = 'button';
+        promoteButtonEl.textContent = '⤴';
+        promoteButtonEl.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this.promoteChildren();
+        });
+
+        actionsEl.addEventListener('pointerdown', (event) => {
+            event.stopPropagation();
+        });
+        actionsEl.replaceChildren(deleteButtonEl, promoteButtonEl);
+        return actionsEl;
     }
 
     private onPointerDown = (event: PointerEvent) => {
         const clicked = this.getClickedNode(event);
+        if (clicked.didClickInput) return;
         
         if (clicked.type === 'word') {
             const wordToken = (this.tree.getNode(clicked.nodeEl.nodeId) as WordNode).token;
@@ -68,8 +99,6 @@ export class SyntaxEditor {
             return;
         }
 
-        if (clicked.didClickInput) return;
-        
         if (clicked.type === null) {
             this.clickNode(null);
         }
@@ -80,7 +109,7 @@ export class SyntaxEditor {
         }
     }
 
-    private onPoinerMove = (event: PointerEvent) => {
+    private onPointerMove = (event: PointerEvent) => {
         if (!this.state.pointer.isDragging || this.state.editing.isEditing) return;
 
         const MIN_PIXELS_MOVED = 20;
@@ -125,10 +154,7 @@ export class SyntaxEditor {
         const underPointer = document.elementFromPoint(event.clientX, event.clientY);
         if (!underPointer) return { type: null, nodeEl: null, didClickInput: false };
 
-        const didClickInput = (
-            ['input', 'button', 'textarea']
-            .includes(underPointer.nodeName.toLowerCase())
-        );
+        const didClickInput = !!underPointer.closest('input, button, textarea');
 
         const wordContEl = underPointer?.closest('.word-node') as HTMLDivElement | null; // whitespace of 'word-node' should return null
         const wordEl = underPointer?.closest('word-node') as WordNodeEl | null;
@@ -188,6 +214,25 @@ export class SyntaxEditor {
             newElement.select();
         }
         this.state.selectedNodeId = id;
+        this.updateSelectionPanel();
+    }
+
+    private updateSelectionPanel() {
+        const id = this.state.selectedNodeId;
+        if (id === null) {
+            this.selectionActionsEl.remove();
+            return;
+        }
+
+        const selectedNode = this.tree.getNode(id);
+        if (selectedNode.type === 'word') {
+            this.selectionActionsEl.remove();
+            return;
+        }
+
+        const selectedElement = this.elementMapping.get(id) as SyntaxNodeEl;
+
+        selectedElement.appendChild(this.selectionActionsEl);
     }
 
     private startEditing() {
@@ -269,9 +314,10 @@ export class SyntaxEditor {
             this.tree.deleteNode(id);
         }
 
-        this.state.selectedNodeId = null; // So that selectNode doesn't deselect unexistent element
-        this.selectNode((parentId === 'root') ? null : parentId);
+        const nextSelectedId = (parentId === 'root') ? null : parentId;
+        this.state.selectedNodeId = null; // So renderTree doesn't try to select the deleted node
         this.renderTree();
+        this.selectNode(nextSelectedId);
     }
 
     private insertBoxAtRange(startToken: number, endToken: number) {

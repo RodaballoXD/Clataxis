@@ -22,21 +22,21 @@ root-node {
     flex-grow: 1;
 }
 
-input {
+#editor-container input {
     display: none;
 }
 
-#sentence-input {
-    display: block;
+syntax-node {
+    display: flex;
+    position: relative;
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
 }
 
 .selected > .word-node > .word {
     outline: 0.2rem solid #a66c26;
     border-radius: 1rem;
-}
-
-syntax-node {
-    width: 100%;
 }
 
 .syntax-node {
@@ -56,7 +56,43 @@ syntax-node {
     box-shadow: 0 0 0 3px rgba(166, 108, 38, 0.12);
 }
 
-.editing > input {
+.node-action-buttons {
+    display: flex;
+    position: absolute;
+    left: 50%;
+    bottom: -0.5rem;
+    z-index: 2;
+    transform: translateX(-50%);
+    gap: 2rem;
+    pointer-events: auto;
+}
+
+.node-action-buttons > button {
+    width: 1.8rem;
+    height: 1.8rem;
+    border: 1px solid #a66c26;
+    border-radius: 999px;
+    padding: 0;
+    color: #4b3216;
+    background: #fffaf2;
+    box-shadow: 0 0.35rem 1rem rgba(58, 43, 25, 0.16);
+    font: inherit;
+    font-size: 0.95rem;
+    font-weight: 650;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.node-action-buttons > button:hover {
+    background: #f6ead7;
+}
+
+.node-action-buttons > button:focus-visible {
+    outline: 3px solid rgba(166, 108, 38, 0.28);
+    outline-offset: 2px;
+}
+
+#editor-container .editing > input {
     display: block;
     outline: solid 0.1rem #00000076;
     border-radius: 0.5rem;
