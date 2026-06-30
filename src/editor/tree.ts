@@ -1,4 +1,5 @@
 import { exampleSentence } from "../shared/consts.js";
+import { WordNodeData } from "./elements.js";
 
 export class SyntaxTree {
     private tree: RootNode;
@@ -284,6 +285,70 @@ export class SyntaxTree {
             }
             return nodesToMove;
         }
+    }
+
+    setWordNodeAtId(id: number, wordData: WordNodeData): boolean /* tree was modified */ {
+        const node = this.getNode(id);
+        if (node.type !== 'word') throw new Error("Attempted to `setWordNodeAtId` on box node");
+        const word = wordData.word?.trim() ?? null;
+        const comment = wordData.comment?.trim() ?? null;
+
+        const wordHasSpaces = /\s/.test(word ?? '');
+        if (word && !wordHasSpaces) {
+            node.word = word;
+            node.comment = comment;
+            return false;
+        }
+
+        if (!word) {
+            this.deleteWordNode(node);
+        }
+        else if (wordHasSpaces) {
+            this.createWordsAt(node, wordData);
+        }
+
+        // Remap token ranges
+        const reduced = this.toReducedJSON();
+        this.tree = this.buildTreeFromReduced(reduced);
+        this.mapNodes();
+
+        return true;
+    }
+
+    private deleteWordNode(node: WordNode) {
+        const findOneSizedParent = (node: WordNode) => {
+            let found = null;
+            let parent: RootNode | SyntaxNode | WordNode = node;
+            while (true) {
+                parent = this.getParentNode(parent.id);
+                if ((parent.startToken !== parent.endToken) || (parent.id === 'root')) {
+                    break;
+                }
+                found = parent;
+            }
+            return found;
+        }
+
+        let outermostForRange = findOneSizedParent(node);
+        if (outermostForRange) {
+            this.deleteNode(outermostForRange.id);
+        }
+
+        const currentParent = this.getParentNode(node.id); // Given that `deleteNode` used `mapNodes`
+        currentParent.contents = currentParent.contents.filter((child) => (child !== node));
+    }
+
+    private createWordsAt(node: WordNode, wordData: WordNodeData) {
+        const wordsArr = wordData.word!.split(/\s+/);
+        const newNodes = wordsArr.map((str) => {
+            return this.buildNode({ cont: str });
+        }) as WordNode[];
+
+        newNodes[0].comment = wordData.comment;
+        
+        const parent = this.getParentNode(node.id);
+        const idxInParent = parent.contents.indexOf(node);
+        parent.contents.splice(idxInParent, 1, ...newNodes);
     }
 }
 

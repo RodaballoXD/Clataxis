@@ -24,6 +24,7 @@ root-node {
 
 #editor-container input {
     display: none;
+    text-align: center;
 }
 
 syntax-node {
@@ -159,7 +160,7 @@ syntax-node {
     color: #5b5b5b;
 }
 
-.word-node > .word-input {
+#editor-container .word-node.editing > .word-input {
     font-size: 2.4rem;
     height: fit-content;
     font-weight: bold;

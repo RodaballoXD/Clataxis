@@ -105,7 +105,7 @@ export class SyntaxEditor {
 
         else if (clicked.type === 'syntax') {
             const clickedId = clicked.nodeEl.nodeId as number;
-            this.clickNode(clickedId);
+            this.clickNode(clickedId, event);
         }
     }
 
@@ -142,7 +142,7 @@ export class SyntaxEditor {
             const clicked = this.getClickedNode(event);
             if (clicked.didClickInput) return;
             const clickedId = clicked.nodeEl?.nodeId as number;
-            this.clickNode(clickedId ?? null);
+            this.clickNode(clickedId ?? null, event);
             return;
         }
 
@@ -184,15 +184,17 @@ export class SyntaxEditor {
         };
     }
 
-    private clickNode(id: number | null) {
+    private clickNode(id: number | null, event?: PointerEvent) {
         const prevSelected = this.state.selectedNodeId;
         const clickedSame = (prevSelected === id) && (id !== null);
         const wasEditing = this.state.editing.isEditing;
+
         if (wasEditing && clickedSame) {
             return;
         }
         if (!wasEditing && clickedSame) {
-            this.startEditing();
+            if (!event) throw new Error("Attempted to `startEditing()` with no `event` parameter");
+            this.startEditing(event);
             return;
         }
 
@@ -235,7 +237,9 @@ export class SyntaxEditor {
         selectedElement.appendChild(this.selectionActionsEl);
     }
 
-    private startEditing() {
+    private startEditing(event: PointerEvent) {
+        let field = getField(event)!;
+
         const id = this.state.selectedNodeId;
         if (id === null) throw new Error("Cannot edit unselected node");
 
@@ -247,17 +251,30 @@ export class SyntaxEditor {
             field: null
         };
 
-        // TODO: Set field to clicked field
-        let field: EditorState['editing']['field'];
-        if (element.type === 'word') {
-            field = 'word';
-            this.state.editing.elements?.word?.focus();
-        } else {
-            field = 'category';
-            this.state.editing.elements?.category?.focus();
+        if (field === null) {
+            field = (element.type === 'word') ? 'word' : 'category';
         }
+        const inputEl = this.state.editing.elements?.[field];
+        requestAnimationFrame(() => inputEl?.focus());
 
         this.state.editing.field = field;
+
+        function getField(event: PointerEvent): EditorState['editing']['field'] {
+            const classNames = ['function', 'category', 'word', 'comment', 'word-comment'];
+
+            const underPointer = document.elementFromPoint(event.clientX, event.clientY);
+            const clicked = underPointer?.closest(`.${classNames.join(', .')}`);
+
+            let foundClassName: string | null = null;
+            for (const name of classNames) {
+                if (clicked?.classList.contains(name)) {
+                    foundClassName = name;
+                }
+            }
+            if (foundClassName === 'word-comment') foundClassName = 'comment';
+
+            return foundClassName as EditorState['editing']['field'];
+        }
     }
 
     private finishEditing() {
@@ -275,11 +292,11 @@ export class SyntaxEditor {
         const node = this.tree.getNode(id);
 
         const analysis = element.finishEdit();
-        if (element.type === 'word') { // TODO: Delete/Create node
-            const wNode = node as WordNode; const wAnalysis = analysis as WordNodeData;
-
-            wNode.word = wAnalysis.word ?? 'TODO'; // This should actually delete the node if null...
-            wNode.comment = wAnalysis.comment;
+        if (element.type === 'word') {
+            const treeWasModified = this.tree.setWordNodeAtId(id, analysis);
+            if (treeWasModified) {
+                this.state.selectedNodeId = null;
+            }
         }
         else {
             const sNode = node as SyntaxNode; const sAnalysis = analysis as AnalysisData;
