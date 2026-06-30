@@ -194,8 +194,8 @@ export class WordNodeEl extends HTMLElement {
                 <div class = "word-comment"></div>
                 <div class = "word"></div>
 
-                <input class = "word-comment-input"></input>
-                <input class = "word-input"></input>
+                <input class = "word-comment-input">
+                <input class = "word-input">
             </div>
         `;
 

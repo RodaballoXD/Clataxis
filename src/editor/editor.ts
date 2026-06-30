@@ -1,11 +1,22 @@
 import { AnyNodeEl, InputFieldEls, RootNodeEl, SyntaxNodeEl, WordNodeData, WordNodeEl } from "./elements.js";
-import { AnalysisData, NodeId, ReducedJSON, SyntaxNode, SyntaxTree, WordNode } from "./tree.js";
+import type { EditorInterfaceEls } from "./editor-screen.js";
+import type { AnalysisData, NodeId, ReducedJSON, SyntaxNode, WordNode } from "./tree.js";
+import { SyntaxTree } from "./tree.js";
+
+const MIN_ZOOM = 0.2;
+const MAX_ZOOM = 4;
+const ZOOM_STEP = 0.1;
 
 export class SyntaxEditor {
     tree: SyntaxTree;
     rootEl: RootNodeEl;
     appEl: HTMLDivElement;
     private selectionActionsEl: HTMLDivElement;
+    private onChange: (json: ReducedJSON) => void;
+    private controls: EditorInterfaceEls | null;
+    private zoom: number = 1;
+    private undoStack: ReducedJSON[] = [];
+    private redoStack: ReducedJSON[] = [];
     elementMapping: Map<NodeId, AnyNodeEl> = new Map();
 
     state: EditorState = {
@@ -26,17 +37,27 @@ export class SyntaxEditor {
         }
     };
 
-    constructor(json: ReducedJSON) {
+    constructor(json: ReducedJSON, onChange: (json: ReducedJSON) => void = () => {}, controls: EditorInterfaceEls | null = null) {
         this.tree = new SyntaxTree(json);
         this.rootEl = document.createElement('root-node') as RootNodeEl;
         this.appEl = document.getElementById('app') as HTMLDivElement;
         this.selectionActionsEl = this.createSelectionActions();
+        this.onChange = onChange;
+        this.controls = controls;
     }
 
     mount(container: HTMLElement) {
         container.appendChild(this.rootEl);
         this.renderTree();
         this.installListeners();
+        this.installControlListeners();
+        this.updateHistoryButtons();
+    }
+
+    destroy() {
+        this.appEl.removeEventListener('pointerdown', this.onPointerDown);
+        this.appEl.removeEventListener('pointermove', this.onPointerMove);
+        this.appEl.removeEventListener('pointerup', this.onPointerUp);
     }
 
     private renderTree() {
@@ -45,6 +66,71 @@ export class SyntaxEditor {
         if (this.state.selectedNodeId !== null) {
             this.selectNode(this.state.selectedNodeId);
         }
+    }
+
+    private notifyChange() {
+        this.onChange(this.tree.toReducedJSON());
+    }
+
+    private snapshot(): ReducedJSON {
+        return cloneReducedJSON(this.tree.toReducedJSON());
+    }
+
+    private restoreSnapshot(json: ReducedJSON) {
+        this.state.selectedNodeId = null;
+        this.resetEditingState();
+        this.tree = new SyntaxTree(cloneReducedJSON(json));
+        this.renderTree();
+        this.notifyChange();
+        this.updateHistoryButtons();
+    }
+
+    private registerTreeChange(previousJSON: ReducedJSON) {
+        const currentJSON = this.tree.toReducedJSON();
+        if (sameReducedJSON(previousJSON, currentJSON)) return;
+
+        this.undoStack.push(cloneReducedJSON(previousJSON));
+        this.redoStack = [];
+        this.notifyChange();
+        this.updateHistoryButtons();
+    }
+
+    private undo() {
+        const previous = this.undoStack.pop();
+        if (!previous) return;
+
+        this.redoStack.push(this.snapshot());
+        this.restoreSnapshot(previous);
+    }
+
+    private redo() {
+        const next = this.redoStack.pop();
+        if (!next) return;
+
+        this.undoStack.push(this.snapshot());
+        this.restoreSnapshot(next);
+    }
+
+    private installControlListeners() {
+        if (!this.controls) return;
+
+        this.controls.zoomInButtonEl.addEventListener('click', () => this.changeZoom(ZOOM_STEP));
+        this.controls.zoomOutButtonEl.addEventListener('click', () => this.changeZoom(-ZOOM_STEP));
+        this.controls.undoButtonEl.addEventListener('click', () => this.undo());
+        this.controls.redoButtonEl.addEventListener('click', () => this.redo());
+    }
+
+    private changeZoom(delta: number) {
+        const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, this.zoom + delta));
+        this.zoom = Math.round(nextZoom * 100) / 100;
+        this.rootEl.style.zoom = String(this.zoom);
+    }
+
+    private updateHistoryButtons() {
+        if (!this.controls) return;
+
+        this.controls.undoButtonEl.disabled = this.undoStack.length === 0;
+        this.controls.redoButtonEl.disabled = this.redoStack.length === 0;
     }
 
     private installListeners() {
@@ -278,18 +364,14 @@ export class SyntaxEditor {
     }
 
     private finishEditing() {
-        this.state.editing = {
-            isEditing: false,
-            type: null,
-            field: null,
-            elements: null
-        };
-
         const id = this.state.selectedNodeId;
         if (id === null) throw new Error("Cannot edit unselected node");
 
         const element = this.elementMapping.get(id) as SyntaxNodeEl | WordNodeEl;
         const node = this.tree.getNode(id);
+        const previousJSON = this.snapshot();
+
+        this.resetEditingState();
 
         const analysis = element.finishEdit();
         if (element.type === 'word') {
@@ -299,14 +381,20 @@ export class SyntaxEditor {
             }
         }
         else {
-            const sNode = node as SyntaxNode; const sAnalysis = analysis as AnalysisData;
-            
-            sNode.category = sAnalysis.category!;
-            sNode.function = sAnalysis.function!;
-            sNode.comment = sAnalysis.comment;
+            this.tree.setNodeAnalysis(node.id as number, analysis);
         }
 
         this.renderTree();
+        this.registerTreeChange(previousJSON);
+    }
+
+    private resetEditingState() {
+        this.state.editing = {
+            isEditing: false,
+            type: null,
+            field: null,
+            elements: null
+        };
     }
 
     private deleteNode() {
@@ -322,6 +410,7 @@ export class SyntaxEditor {
         if (id === null) return;
         const selected = this.tree.getNode(id);
         if (selected.type === 'word') return;
+        const previousJSON = this.snapshot();
         
         const parentId = this.tree.getParentId(id);
 
@@ -335,17 +424,20 @@ export class SyntaxEditor {
         this.state.selectedNodeId = null; // So renderTree doesn't try to select the deleted node
         this.renderTree();
         this.selectNode(nextSelectedId);
+        this.registerTreeChange(previousJSON);
     }
 
     private insertBoxAtRange(startToken: number, endToken: number) {
         if (startToken > endToken) {
             [endToken, startToken] = [startToken, endToken];
         }
+        const previousJSON = this.snapshot();
         const insertedData = this.tree.insertBoxAtRange(startToken, endToken);
         if (insertedData.status === 'error') return; // TODO: Message for user
 
         this.renderTree();
         this.selectNode(insertedData.newNodeId);
+        this.registerTreeChange(previousJSON);
     }
 }
 
@@ -389,4 +481,12 @@ type ClickedData = { type: null, nodeEl: null, didClickInput: boolean } | { type
 interface Position {
     x: number;
     y: number;
+}
+
+function cloneReducedJSON(json: ReducedJSON): ReducedJSON {
+    return JSON.parse(JSON.stringify(json)) as ReducedJSON;
+}
+
+function sameReducedJSON(a: ReducedJSON, b: ReducedJSON): boolean {
+    return JSON.stringify(a) === JSON.stringify(b);
 }

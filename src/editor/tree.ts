@@ -111,11 +111,6 @@ export class SyntaxTree {
         return this.tree;
     }
 
-    setJSON(json: RootNode) {
-        this.tree = json;
-        this.mapNodes();
-    }
-
     toReducedJSON(): ReducedJSON {
         const contents = this.tree.contents;
         return contents.map(child => this.reduceNode(child));
@@ -291,7 +286,7 @@ export class SyntaxTree {
         const node = this.getNode(id);
         if (node.type !== 'word') throw new Error("Attempted to `setWordNodeAtId` on box node");
         const word = wordData.word?.trim() ?? null;
-        const comment = wordData.comment?.trim() ?? null;
+        const comment = wordData.comment ?? null; // Don't trim
 
         const wordHasSpaces = /\s/.test(word ?? '');
         if (word && !wordHasSpaces) {
@@ -304,7 +299,7 @@ export class SyntaxTree {
             this.deleteWordNode(node);
         }
         else if (wordHasSpaces) {
-            this.createWordsAt(node, wordData);
+            this.createWordsAt(node, word, comment);
         }
 
         // Remap token ranges
@@ -330,6 +325,8 @@ export class SyntaxTree {
         }
 
         let outermostForRange = findOneSizedParent(node);
+        const isOnlyWord = (this.getParentNode((outermostForRange ?? node).id).id === 'root');
+        if (isOnlyWord) return;
         if (outermostForRange) {
             this.deleteNode(outermostForRange.id);
         }
@@ -338,13 +335,13 @@ export class SyntaxTree {
         currentParent.contents = currentParent.contents.filter((child) => (child !== node));
     }
 
-    private createWordsAt(node: WordNode, wordData: WordNodeData) {
-        const wordsArr = wordData.word!.split(/\s+/);
+    private createWordsAt(node: WordNode, word: string, comment?: string | null) {
+        const wordsArr = word!.split(/\s+/);
         const newNodes = wordsArr.map((str) => {
             return this.buildNode({ cont: str });
         }) as WordNode[];
 
-        newNodes[0].comment = wordData.comment;
+        newNodes[0].comment = comment;
         
         const parent = this.getParentNode(node.id);
         const idxInParent = parent.contents.indexOf(node);

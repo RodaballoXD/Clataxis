@@ -1,6 +1,5 @@
 node_modules/
 examples/
-src/dist
 build_on_ctrl_s.py
 .agents/
 __pycache__/
