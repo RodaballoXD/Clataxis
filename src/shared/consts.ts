@@ -1,4 +1,4 @@
-import { ReducedJSON } from "../editor/tree.js";
+import type { ReducedJSON } from "../editor/tree.js";
 
 export const exampleSentence = "El gato come pescado";
 

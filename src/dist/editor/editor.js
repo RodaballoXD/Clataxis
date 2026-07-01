@@ -52,7 +52,7 @@ export class SyntaxEditor {
         };
         this.onPointerMove = (event) => {
             var _a;
-            if (!this.state.pointer.isDragging || this.state.editing.isEditing)
+            if (!this.state.pointer.isDragging)
                 return;
             const MIN_PIXELS_MOVED = 20;
             const currentPos = this.getMousePosition(event);
@@ -85,6 +85,8 @@ export class SyntaxEditor {
                 this.clickNode(clickedId ?? null, event);
                 return;
             }
+            if (this.state.editing.isEditing)
+                this.finishEditing();
             this.insertBoxAtRange(this.state.pointer.startWordToken, this.state.pointer.endWordToken);
             this.clearPointerState();
         };
@@ -238,7 +240,7 @@ export class SyntaxEditor {
         }
         if (!wasEditing && clickedSame) {
             if (!event)
-                throw new Error("Attempted to `startEditing()` with no `event` parameter");
+                throw new Error("`startEditing()` should be called with `event` parameter here");
             this.startEditing(event);
             return;
         }
@@ -275,7 +277,7 @@ export class SyntaxEditor {
         selectedElement.appendChild(this.selectionActionsEl);
     }
     startEditing(event) {
-        let field = getField(event);
+        let field = (event) ? getField(event) : null;
         const id = this.state.selectedNodeId;
         if (id === null)
             throw new Error("Cannot edit unselected node");
@@ -373,6 +375,7 @@ export class SyntaxEditor {
             return; // TODO: Message for user
         this.renderTree();
         this.selectNode(insertedData.newNodeId);
+        this.startEditing();
         this.registerTreeChange(previousJSON);
     }
 }

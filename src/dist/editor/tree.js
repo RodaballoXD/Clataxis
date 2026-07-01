@@ -2,7 +2,7 @@ import { exampleSentence } from "../shared/consts.js";
 export class SyntaxTree {
     constructor(json) {
         this.idCounter = 0;
-        this.tokenCounter = null;
+        this.tokenCounter = null; // Starts at 1
         this.tree = this.buildTreeFromReduced(json ?? [{ cont: '∅' }]);
         this.nodeMap = new Map();
         this.parentNodeMap = new Map();
@@ -24,6 +24,15 @@ export class SyntaxTree {
     buildNode(node, getTokenRange = true) {
         if (this.tokenCounter === null) {
             this.tokenCounter = 0;
+        }
+        if (typeof node === 'string') {
+            this.tokenCounter++;
+            return {
+                id: this.newId(),
+                type: 'word',
+                token: this.tokenCounter,
+                word: node
+            };
         }
         if (typeof node.cont === 'string') {
             this.tokenCounter++;
@@ -105,6 +114,8 @@ export class SyntaxTree {
     }
     reduceNode(node) {
         if (node.type === 'word') {
+            if (!node.comment)
+                return node.word;
             return {
                 com: node.comment,
                 cont: node.word
@@ -289,14 +300,17 @@ export class SyntaxTree {
             return found;
         };
         let outermostForRange = findOneSizedParent(node);
-        const isOnlyWord = (this.getParentNode((outermostForRange ?? node).id).id === 'root');
-        if (isOnlyWord)
-            return;
         if (outermostForRange) {
             this.deleteNode(outermostForRange.id);
         }
         const currentParent = this.getParentNode(node.id); // Given that `deleteNode` used `mapNodes`
         currentParent.contents = currentParent.contents.filter((child) => (child !== node));
+        const treeIsEmpty = (currentParent.id === 'root' && currentParent.contents.length === 0);
+        if (treeIsEmpty) {
+            const placeholder = this.buildNode({ cont: '∅' }, false);
+            placeholder.token = 1;
+            currentParent.contents = [placeholder];
+        }
     }
     createWordsAt(node, word, comment) {
         const wordsArr = word.split(/\s+/);

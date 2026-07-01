@@ -4,7 +4,7 @@ import { WordNodeData } from "./elements.js";
 export class SyntaxTree {
     private tree: RootNode;
     private idCounter: number = 0;
-    private tokenCounter: number | null = null;
+    private tokenCounter: number | null = null; // Starts at 1
     private nodeMap: Map<NodeId, RootNode | SyntaxNode | WordNode>;
     private parentNodeMap: Map<number, NodeId>;
 
@@ -35,6 +35,15 @@ export class SyntaxTree {
         if (this.tokenCounter === null) {
             this.tokenCounter = 0;
         }
+        if (typeof node === 'string') {
+            this.tokenCounter++;
+            return {
+                id: this.newId(),
+                type: 'word',
+                token: this.tokenCounter,
+                word: node
+            };
+        }
         if (typeof node.cont === 'string') {
             this.tokenCounter++;
             return {
@@ -45,6 +54,7 @@ export class SyntaxTree {
                 comment: node.com
             };
         }
+
         const contents = node.cont.map(child => this.buildNode(child));
 
         let startToken: number; let endToken: number;
@@ -118,6 +128,7 @@ export class SyntaxTree {
 
     private reduceNode(node: SyntaxNode | WordNode): ReducedSyntaxNode {
         if (node.type === 'word') {
+            if (!node.comment) return node.word;
             return {
                 com: node.comment,
                 cont: node.word
@@ -325,14 +336,18 @@ export class SyntaxTree {
         }
 
         let outermostForRange = findOneSizedParent(node);
-        const isOnlyWord = (this.getParentNode((outermostForRange ?? node).id).id === 'root');
-        if (isOnlyWord) return;
         if (outermostForRange) {
             this.deleteNode(outermostForRange.id);
         }
 
         const currentParent = this.getParentNode(node.id); // Given that `deleteNode` used `mapNodes`
         currentParent.contents = currentParent.contents.filter((child) => (child !== node));
+        const treeIsEmpty = (currentParent.id === 'root' && currentParent.contents.length === 0);
+        if (treeIsEmpty) {
+            const placeholder = this.buildNode({ cont: '∅' }, false) as WordNode;
+            placeholder.token = 1;
+            currentParent.contents = [ placeholder ];
+        }
     }
 
     private createWordsAt(node: WordNode, word: string, comment?: string | null) {
@@ -402,7 +417,9 @@ export interface ReducedWord {
     cont: string;
 }
 
-export type ReducedSyntaxNode = ReducedSyntaxBox | ReducedWord;
+export type VeryReducedWord = ReducedWord | string;
+
+export type ReducedSyntaxNode = ReducedSyntaxBox | VeryReducedWord;
 export type ReducedJSON = ReducedSyntaxNode[];
 
 export type NodeId = number | 'root';
