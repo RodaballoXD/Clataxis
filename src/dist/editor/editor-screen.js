@@ -21,8 +21,8 @@ export function createEditorInterface(onReturnToSentenceScreen) {
     notificationEl.setAttribute('aria-live', 'polite');
     const historyControlsEl = document.createElement('div');
     historyControlsEl.className = 'editor-floating-panel editor-history-controls';
-    const undoButtonEl = createButton('↶', 'Deshacer');
-    const redoButtonEl = createButton('↷', 'Rehacer');
+    const undoButtonEl = createButton('↶', 'Deshacer (Ctrl+z)');
+    const redoButtonEl = createButton('↷', 'Rehacer (Ctrl+y)');
     historyControlsEl.replaceChildren(undoButtonEl, redoButtonEl);
     historyPanelEl.replaceChildren(notificationEl, historyControlsEl);
     interfaceContainerEl.replaceChildren(homeButtonEl, zoomControlsEl, rootContainerEl, historyPanelEl);

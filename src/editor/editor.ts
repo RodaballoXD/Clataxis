@@ -13,10 +13,11 @@ export class SyntaxEditor {
     appEl: HTMLDivElement;
     private selectionActionsEl: HTMLDivElement;
     private onChange: (json: ReducedJSON) => void;
-    private controls: EditorInterfaceEls | null;
+    private controls: EditorInterfaceEls;
     private zoom: number = 1;
     private undoStack: ReducedJSON[] = [];
     private redoStack: ReducedJSON[] = [];
+    private notificationTimeout: number | null = null;
     elementMapping: Map<NodeId, AnyNodeEl> = new Map();
 
     state: EditorState = {
@@ -37,7 +38,7 @@ export class SyntaxEditor {
         }
     };
 
-    constructor(json: ReducedJSON, onChange: (json: ReducedJSON) => void = () => {}, controls: EditorInterfaceEls | null = null) {
+    constructor(json: ReducedJSON, onChange: (json: ReducedJSON) => void = () => {}, controls: EditorInterfaceEls) {
         this.tree = new SyntaxTree(json);
         this.rootEl = document.createElement('root-node') as RootNodeEl;
         this.appEl = document.getElementById('app') as HTMLDivElement;
@@ -58,6 +59,11 @@ export class SyntaxEditor {
         this.appEl.removeEventListener('pointerdown', this.onPointerDown);
         this.appEl.removeEventListener('pointermove', this.onPointerMove);
         this.appEl.removeEventListener('pointerup', this.onPointerUp);
+        this.appEl.removeEventListener('pointercancel', this.onPointerCancel);
+        document.removeEventListener('keydown', this.onKeyDown, true);
+        if (this.notificationTimeout !== null) {
+            window.clearTimeout(this.notificationTimeout);
+        }
     }
 
     private renderTree() {
@@ -101,6 +107,7 @@ export class SyntaxEditor {
 
         this.redoStack.push(this.snapshot());
         this.restoreSnapshot(previous);
+        this.showNotification('Deshecho');
     }
 
     private redo() {
@@ -109,11 +116,10 @@ export class SyntaxEditor {
 
         this.undoStack.push(this.snapshot());
         this.restoreSnapshot(next);
+        this.showNotification('Rehecho');
     }
 
     private installControlListeners() {
-        if (!this.controls) return;
-
         this.controls.zoomInButtonEl.addEventListener('click', () => this.changeZoom(ZOOM_STEP));
         this.controls.zoomOutButtonEl.addEventListener('click', () => this.changeZoom(-ZOOM_STEP));
         this.controls.undoButtonEl.addEventListener('click', () => this.undo());
@@ -124,11 +130,10 @@ export class SyntaxEditor {
         const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, this.zoom + delta));
         this.zoom = Math.round(nextZoom * 100) / 100;
         this.rootEl.style.zoom = String(this.zoom);
+        this.showNotification(`Zoom ${this.zoom.toFixed(1).replace(/\.0$/, '')}x`);
     }
 
     private updateHistoryButtons() {
-        if (!this.controls) return;
-
         this.controls.undoButtonEl.disabled = this.undoStack.length === 0;
         this.controls.redoButtonEl.disabled = this.redoStack.length === 0;
     }
@@ -137,6 +142,8 @@ export class SyntaxEditor {
         this.appEl.addEventListener('pointerdown', this.onPointerDown);
         this.appEl.addEventListener('pointermove', this.onPointerMove);
         this.appEl.addEventListener('pointerup', this.onPointerUp);
+        this.appEl.addEventListener('pointercancel', this.onPointerCancel);
+        document.addEventListener('keydown', this.onKeyDown, true);
     }
 
     private createSelectionActions(): HTMLDivElement {
@@ -166,6 +173,58 @@ export class SyntaxEditor {
         actionsEl.replaceChildren(deleteButtonEl, promoteButtonEl);
         return actionsEl;
     }
+
+    private onPointerCancel = (event: PointerEvent) => {
+        if (!this.state.pointer.isDragging) return;
+        if (this.appEl.hasPointerCapture(event.pointerId)) {
+            this.appEl.releasePointerCapture(event.pointerId);
+        }
+        this.clearPointerState();
+    };
+
+    private onKeyDown = (event: KeyboardEvent) => {
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+            event.preventDefault();
+            if (event.shiftKey) {
+                this.redo();
+            } else {
+                this.undo();
+            }
+            return;
+        }
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'y') {
+            event.preventDefault();
+            this.redo();
+            return;
+        }
+
+        if (this.state.editing.isEditing) {
+            if (event.key === 'Enter' || event.key === 'Escape') {
+                event.preventDefault();
+                this.finishEditing();
+                return;
+            }
+            this.handleEditingFieldNavigation(event);
+            return;
+        }
+
+        const selectedId = this.state.selectedNodeId;
+        const selectedNode = (selectedId !== null) ? this.tree.getNode(selectedId) : null;
+        const boxIsSelected = (selectedNode && selectedNode.type === 'box');
+        if (boxIsSelected) {
+            event.preventDefault();
+            if (event.key === 'Enter') {
+                this.startEditing();
+            }
+            else if (event.key === 'Backspace') {
+                this.promoteChildren();
+            }
+            else if (event.key === 'Delete') {
+                this.deleteNode();
+            }
+            return;
+        }
+    };
 
     private onPointerDown = (event: PointerEvent) => {
         const clicked = this.getClickedNode(event);
@@ -325,6 +384,70 @@ export class SyntaxEditor {
         selectedElement.appendChild(this.selectionActionsEl);
     }
 
+    private showNotification(message: string, duration = 1800) {
+        this.controls.notificationEl.textContent = message;
+        if (this.notificationTimeout !== null) {
+            window.clearTimeout(this.notificationTimeout);
+        }
+        this.notificationTimeout = window.setTimeout(() => {
+            this.controls.notificationEl.textContent = '';
+            this.notificationTimeout = null;
+        }, duration);
+    }
+
+    private handleEditingFieldNavigation(event: KeyboardEvent) {
+        if (!(event.target instanceof HTMLInputElement)) return;
+
+        const inputs = this.getEditingInputElements();
+        const currentIndex = inputs.findIndex((input) => input === event.target);
+        if (currentIndex < 0) throw new Error("handleEditingFieldNavigation: event.target is not in the list of editing input elements");
+
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+            const caret = event.target.selectionStart ?? 0;
+            const atStart = caret <= 0;
+            const atEnd = caret >= (event.target.value.length);
+            if (event.key === 'ArrowLeft' && atStart) {
+                event.preventDefault();
+                this.focusEditingInput(currentIndex - 1);
+            }
+            else if (event.key === 'ArrowRight' && atEnd) {
+                event.preventDefault();
+                this.focusEditingInput(currentIndex + 1);
+            }
+            return;
+        }
+
+        if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            this.focusEditingInput(currentIndex - 1);
+        }
+        else if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            this.focusEditingInput(currentIndex + 1);
+        }
+    }
+
+    private getEditingInputElements(): HTMLInputElement[] {
+        const elements = this.state.editing.elements;
+        if (!elements) return [];
+
+        if (this.state.editing.type === 'word') {
+            return [elements.word, elements.comment].filter((input): input is HTMLInputElement => !!input);
+        }
+
+        return [elements.category, elements.function, elements.comment].filter((input): input is HTMLInputElement => !!input);
+    }
+
+    private focusEditingInput(index: number) {
+        const inputs = this.getEditingInputElements();
+        if (index < 0 || index >= inputs.length) return;
+
+        const input = inputs[index];
+        input.focus();
+        const position = input.value.length;
+        input.setSelectionRange(position, position);
+    }
+
     private startEditing(event?: PointerEvent) {
         let field = (event) ? getField(event) : null;
 
@@ -346,6 +469,7 @@ export class SyntaxEditor {
         requestAnimationFrame(() => inputEl?.focus());
 
         this.state.editing.field = field;
+        this.showNotification('Editando caja');
 
         function getField(event: PointerEvent): EditorState['editing']['field'] {
             const classNames = ['function', 'category', 'word', 'comment', 'word-comment'];
@@ -388,6 +512,7 @@ export class SyntaxEditor {
 
         this.renderTree();
         this.registerTreeChange(previousJSON);
+        this.showNotification('Caja editada');
     }
 
     private resetEditingState() {
@@ -401,10 +526,12 @@ export class SyntaxEditor {
 
     private deleteNode() {
         this.doDeleteAction(false);
+        this.showNotification('Caja eliminada');
     }
 
     private promoteChildren() {
         this.doDeleteAction(true);
+        this.showNotification('Caja quitada');
     }
 
     private doDeleteAction(keepChildren: boolean) {
@@ -435,12 +562,16 @@ export class SyntaxEditor {
         }
         const previousJSON = this.snapshot();
         const insertedData = this.tree.insertBoxAtRange(startToken, endToken);
-        if (insertedData.status === 'error') return; // TODO: Message for user
+        if (insertedData.status === 'error') {
+            this.showNotification('No se pudo crear la caja');
+            return;
+        }
 
         this.renderTree();
         this.selectNode(insertedData.newNodeId);
         this.startEditing();
         this.registerTreeChange(previousJSON);
+        this.showNotification('Caja creada');
     }
 }
 
