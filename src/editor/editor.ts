@@ -180,6 +180,7 @@ export class SyntaxEditor {
             this.appEl.releasePointerCapture(event.pointerId);
         }
         this.clearPointerState();
+        this.clearDragHighlight();
     };
 
     private onKeyDown = (event: KeyboardEvent) => {
@@ -240,6 +241,7 @@ export class SyntaxEditor {
                 endWordToken: wordToken,
                 startMousePosition: this.getMousePosition(event)
             };
+            this.clearDragHighlight();
             this.appEl.setPointerCapture(event.pointerId);
             return;
         }
@@ -261,6 +263,7 @@ export class SyntaxEditor {
         
         const currentPos = this.getMousePosition(event);
         const didMove = (distance(this.state.pointer.startMousePosition, currentPos) > MIN_PIXELS_MOVED);
+        const didJustStartMoving = (didMove && !this.state.pointer.didMove);
         this.state.pointer.didMove ||= didMove;
         
         let endWordToken: number;
@@ -270,7 +273,11 @@ export class SyntaxEditor {
         } else {
             endWordToken = (this.tree.getNode(clicked.nodeEl.nodeId) as WordNode).token;
         }
-        this.state.pointer.endWordToken = endWordToken;
+        const didChangeDragged = ((this.state.pointer.endWordToken !== endWordToken) || didJustStartMoving);
+        this.state.pointer.endWordToken = endWordToken; 
+        if (didChangeDragged) {
+            this.updateDragHighlight();
+        }
 
         function distance(pos1: Position, pos2: Position): number {
             const dx = pos1.x - pos2.x;
@@ -283,11 +290,12 @@ export class SyntaxEditor {
         if (!this.state.pointer.isDragging) return;
 
         if (!this.state.pointer.didMove) {
-            this.clearPointerState();
             const clicked = this.getClickedNode(event);
             if (clicked.didClickInput) return;
             const clickedId = clicked.nodeEl?.nodeId as number;
             this.clickNode(clickedId ?? null, event);
+            this.clearPointerState();
+            this.clearDragHighlight();
             return;
         }
 
@@ -295,6 +303,7 @@ export class SyntaxEditor {
 
         this.insertBoxAtRange(this.state.pointer.startWordToken, this.state.pointer.endWordToken);
         this.clearPointerState();
+        this.clearDragHighlight();
     }
 
     private getClickedNode(event: PointerEvent): ClickedData {
@@ -331,21 +340,39 @@ export class SyntaxEditor {
         };
     }
 
+    private clearDragHighlight() {
+        document.querySelectorAll('.drag-target').forEach((element) => {
+            element.classList.remove('drag-target');
+        });
+    }
+
+    private updateDragHighlight() {
+        this.clearDragHighlight();
+        if (!this.state.pointer.isDragging) return;
+
+        let start = this.state.pointer.startWordToken;
+        let end = this.state.pointer.endWordToken;
+        if (start > end) [ start, end ] = [ end, start ];
+        
+        const draggedWords = this.tree.getWordsFromTokenRange(start, end);
+        for (const word of draggedWords) {
+            const wordEl = this.elementMapping.get(word.id) as WordNodeEl;
+            wordEl.classList.add('drag-target');
+        }
+    }
+
     private clickNode(id: number | null, event?: PointerEvent) {
         const prevSelected = this.state.selectedNodeId;
         const clickedSame = (prevSelected === id) && (id !== null);
         const wasEditing = this.state.editing.isEditing;
 
-        if (wasEditing && clickedSame) {
-            return;
-        }
         if (!wasEditing && clickedSame) {
             if (!event) throw new Error("`startEditing()` should be called with `event` parameter here");
             this.startEditing(event);
             return;
         }
 
-        if (wasEditing && !clickedSame) {
+        if (wasEditing) {
             this.finishEditing();
         }
         this.selectNode(id);
@@ -408,22 +435,22 @@ export class SyntaxEditor {
             const atEnd = caret >= (event.target.value.length);
             if (event.key === 'ArrowLeft' && atStart) {
                 event.preventDefault();
-                this.focusEditingInput(currentIndex - 1);
+                this.focusEditingInput(currentIndex - 1, true);
             }
             else if (event.key === 'ArrowRight' && atEnd) {
                 event.preventDefault();
-                this.focusEditingInput(currentIndex + 1);
+                this.focusEditingInput(currentIndex + 1, false);
             }
             return;
         }
 
         if (event.key === 'ArrowUp') {
             event.preventDefault();
-            this.focusEditingInput(currentIndex - 1);
+            this.focusEditingInput(currentIndex - 1, true);
         }
         else if (event.key === 'ArrowDown') {
             event.preventDefault();
-            this.focusEditingInput(currentIndex + 1);
+            this.focusEditingInput(currentIndex + 1, false);
         }
     }
 
@@ -432,24 +459,25 @@ export class SyntaxEditor {
         if (!elements) return [];
 
         if (this.state.editing.type === 'word') {
-            return [elements.word, elements.comment].filter((input): input is HTMLInputElement => !!input);
+            return [elements.comment, elements.word].filter((input): input is HTMLInputElement => !!input);
         }
 
         return [elements.category, elements.function, elements.comment].filter((input): input is HTMLInputElement => !!input);
     }
 
-    private focusEditingInput(index: number) {
+    private focusEditingInput(index: number, atEnd: boolean) {
         const inputs = this.getEditingInputElements();
         if (index < 0 || index >= inputs.length) return;
 
         const input = inputs[index];
         input.focus();
-        const position = input.value.length;
+        const position = (atEnd) ? input.value.length : 0;
         input.setSelectionRange(position, position);
     }
 
     private startEditing(event?: PointerEvent) {
         let field = (event) ? getField(event) : null;
+        const didFindField = !!field;
 
         const id = this.state.selectedNodeId;
         if (id === null) throw new Error("Cannot edit unselected node");
@@ -466,8 +494,13 @@ export class SyntaxEditor {
             field = (element.type === 'word') ? 'word' : 'category';
         }
         const inputEl = this.state.editing.elements?.[field];
-        requestAnimationFrame(() => inputEl?.focus());
-
+        if (inputEl) { 
+            requestAnimationFrame(() => {
+                inputEl.focus();
+                if (didFindField) inputEl.setSelectionRange(0, inputEl.value.length);
+                else inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
+            });
+        }
         this.state.editing.field = field;
         this.showNotification('Editando caja');
 

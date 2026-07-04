@@ -362,6 +362,19 @@ export class SyntaxTree {
         const idxInParent = parent.contents.indexOf(node);
         parent.contents.splice(idxInParent, 1, ...newNodes);
     }
+
+    getWordsFromTokenRange(startToken: number, endToken: number, fromNode: SyntaxNode | RootNode = this.tree): WordNode[] {
+        const children = fromNode.contents;
+        let foundInRange = [];
+        for (const child of children) {
+            if (child.type === 'word') {
+                if ((startToken <= child.token) && (child.token <= endToken)) foundInRange.push(child);
+                continue;
+            }
+            foundInRange.push(...this.getWordsFromTokenRange(startToken, endToken, child));
+        }
+        return foundInRange;
+    }
 }
 
 export function sentenceToReducedJSON(sentence: string): ReducedJSON | null {

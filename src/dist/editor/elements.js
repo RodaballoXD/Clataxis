@@ -34,8 +34,8 @@ export class RootNodeEl extends BoxNodeEl {
     }
     connectedCallback() {
         this.innerHTML = `
-            <div class = "root-node">
-                <div class = "children"></div>
+            <div class="root-node">
+                <div class="children"></div>
             </div>
         `;
         this.childrenEl = this.querySelector('.children');
@@ -50,19 +50,19 @@ export class SyntaxNodeEl extends BoxNodeEl {
     }
     connectedCallback() {
         this.innerHTML = `
-            <div class = "syntax-node">
-                <div class = "children"></div>
-                <div class = "line"></div>
-                <div class = "analysis">
-                    <input class="category-input">
+            <div class="syntax-node">
+                <div class="children"></div>
+                <div class="line"></div>
+                <div class="analysis">
+                    <input class="category-input" placeholder="cat">
 
-                    <span class = "category" ></span>
-                    <span class = "slash" style="display: none">/</span>
-                    <span class = "function"></span>
-                    <span class = "comment" style="display: none"></span>
+                    <span class="category"></span>
+                    <span class="slash" style="display: none">/</span>
+                    <span class="function"></span>
+                    <span class="comment" style="display: none"></span>
 
-                    <input class="function-input">
-                    <input class="comment-input">
+                    <input class="function-input" placeholder="func">
+                    <input class="comment-input" placeholder="com">
                 </div>
             </div>
         `;
@@ -143,12 +143,12 @@ export class WordNodeEl extends HTMLElement {
     }
     connectedCallback() {
         this.innerHTML = `
-            <div class = "word-node">
-                <div class = "word-comment"></div>
-                <div class = "word"></div>
+            <div class="word-node">
+                <div class="word-comment"></div>
+                <div class="word"></div>
 
-                <input class = "word-comment-input">
-                <input class = "word-input">
+                <input class="word-comment-input" placeholder="comentario">
+                <input class="word-input" placeholder="palabra">
             </div>
         `;
         this.containerEl = this.querySelector('.word-node');

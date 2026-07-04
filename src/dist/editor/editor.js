@@ -33,6 +33,7 @@ export class SyntaxEditor {
                 this.appEl.releasePointerCapture(event.pointerId);
             }
             this.clearPointerState();
+            this.clearDragHighlight();
         };
         this.onKeyDown = (event) => {
             if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
@@ -90,6 +91,7 @@ export class SyntaxEditor {
                     endWordToken: wordToken,
                     startMousePosition: this.getMousePosition(event)
                 };
+                this.clearDragHighlight();
                 this.appEl.setPointerCapture(event.pointerId);
                 return;
             }
@@ -108,6 +110,7 @@ export class SyntaxEditor {
             const MIN_PIXELS_MOVED = 20;
             const currentPos = this.getMousePosition(event);
             const didMove = (distance(this.state.pointer.startMousePosition, currentPos) > MIN_PIXELS_MOVED);
+            const didJustStartMoving = (didMove && !this.state.pointer.didMove);
             (_a = this.state.pointer).didMove || (_a.didMove = didMove);
             let endWordToken;
             const clicked = this.getClickedNode(event);
@@ -117,7 +120,11 @@ export class SyntaxEditor {
             else {
                 endWordToken = this.tree.getNode(clicked.nodeEl.nodeId).token;
             }
+            const didChangeDragged = ((this.state.pointer.endWordToken !== endWordToken) || didJustStartMoving);
             this.state.pointer.endWordToken = endWordToken;
+            if (didChangeDragged) {
+                this.updateDragHighlight();
+            }
             function distance(pos1, pos2) {
                 const dx = pos1.x - pos2.x;
                 const dy = pos1.y - pos2.y;
@@ -128,18 +135,20 @@ export class SyntaxEditor {
             if (!this.state.pointer.isDragging)
                 return;
             if (!this.state.pointer.didMove) {
-                this.clearPointerState();
                 const clicked = this.getClickedNode(event);
                 if (clicked.didClickInput)
                     return;
                 const clickedId = clicked.nodeEl?.nodeId;
                 this.clickNode(clickedId ?? null, event);
+                this.clearPointerState();
+                this.clearDragHighlight();
                 return;
             }
             if (this.state.editing.isEditing)
                 this.finishEditing();
             this.insertBoxAtRange(this.state.pointer.startWordToken, this.state.pointer.endWordToken);
             this.clearPointerState();
+            this.clearDragHighlight();
         };
         this.tree = new SyntaxTree(json);
         this.rootEl = document.createElement('root-node');
@@ -288,20 +297,36 @@ export class SyntaxEditor {
             startMousePosition: null
         };
     }
+    clearDragHighlight() {
+        document.querySelectorAll('.drag-target').forEach((element) => {
+            element.classList.remove('drag-target');
+        });
+    }
+    updateDragHighlight() {
+        this.clearDragHighlight();
+        if (!this.state.pointer.isDragging)
+            return;
+        let start = this.state.pointer.startWordToken;
+        let end = this.state.pointer.endWordToken;
+        if (start > end)
+            [start, end] = [end, start];
+        const draggedWords = this.tree.getWordsFromTokenRange(start, end);
+        for (const word of draggedWords) {
+            const wordEl = this.elementMapping.get(word.id);
+            wordEl.classList.add('drag-target');
+        }
+    }
     clickNode(id, event) {
         const prevSelected = this.state.selectedNodeId;
         const clickedSame = (prevSelected === id) && (id !== null);
         const wasEditing = this.state.editing.isEditing;
-        if (wasEditing && clickedSame) {
-            return;
-        }
         if (!wasEditing && clickedSame) {
             if (!event)
                 throw new Error("`startEditing()` should be called with `event` parameter here");
             this.startEditing(event);
             return;
         }
-        if (wasEditing && !clickedSame) {
+        if (wasEditing) {
             this.finishEditing();
         }
         this.selectNode(id);
@@ -356,21 +381,21 @@ export class SyntaxEditor {
             const atEnd = caret >= (event.target.value.length);
             if (event.key === 'ArrowLeft' && atStart) {
                 event.preventDefault();
-                this.focusEditingInput(currentIndex - 1);
+                this.focusEditingInput(currentIndex - 1, true);
             }
             else if (event.key === 'ArrowRight' && atEnd) {
                 event.preventDefault();
-                this.focusEditingInput(currentIndex + 1);
+                this.focusEditingInput(currentIndex + 1, false);
             }
             return;
         }
         if (event.key === 'ArrowUp') {
             event.preventDefault();
-            this.focusEditingInput(currentIndex - 1);
+            this.focusEditingInput(currentIndex - 1, true);
         }
         else if (event.key === 'ArrowDown') {
             event.preventDefault();
-            this.focusEditingInput(currentIndex + 1);
+            this.focusEditingInput(currentIndex + 1, false);
         }
     }
     getEditingInputElements() {
@@ -378,21 +403,22 @@ export class SyntaxEditor {
         if (!elements)
             return [];
         if (this.state.editing.type === 'word') {
-            return [elements.word, elements.comment].filter((input) => !!input);
+            return [elements.comment, elements.word].filter((input) => !!input);
         }
         return [elements.category, elements.function, elements.comment].filter((input) => !!input);
     }
-    focusEditingInput(index) {
+    focusEditingInput(index, atEnd) {
         const inputs = this.getEditingInputElements();
         if (index < 0 || index >= inputs.length)
             return;
         const input = inputs[index];
         input.focus();
-        const position = input.value.length;
+        const position = (atEnd) ? input.value.length : 0;
         input.setSelectionRange(position, position);
     }
     startEditing(event) {
         let field = (event) ? getField(event) : null;
+        const didFindField = !!field;
         const id = this.state.selectedNodeId;
         if (id === null)
             throw new Error("Cannot edit unselected node");
@@ -407,7 +433,15 @@ export class SyntaxEditor {
             field = (element.type === 'word') ? 'word' : 'category';
         }
         const inputEl = this.state.editing.elements?.[field];
-        requestAnimationFrame(() => inputEl?.focus());
+        if (inputEl) {
+            requestAnimationFrame(() => {
+                inputEl.focus();
+                if (didFindField)
+                    inputEl.setSelectionRange(0, inputEl.value.length);
+                else
+                    inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
+            });
+        }
         this.state.editing.field = field;
         this.showNotification('Editando caja');
         function getField(event) {

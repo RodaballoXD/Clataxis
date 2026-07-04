@@ -10,12 +10,12 @@
 .editor-floating-panel > button {
     height: 2.25rem;
     min-width: 2.25rem;
-    border: 1px solid #b9c1c9;
-    border-radius: 0.45rem;
+    border: 1px solid #d7dfe8;
+    border-radius: 0.75rem;
     padding: 0 0.75rem;
     color: #1d2430;
-    background: rgba(255, 255, 255, 0.94);
-    box-shadow: 0 0.5rem 1.5rem rgba(39, 47, 59, 0.14);
+    background: #ffffff;
+    box-shadow: none;
     font: inherit;
     font-weight: 700;
     line-height: 1;
@@ -24,12 +24,12 @@
 
 .editor-floating-button:hover,
 .editor-floating-panel > button:hover {
-    background: #f6f8fb;
+    background: #f7f9fb;
 }
 
 .editor-floating-button:focus-visible,
 .editor-floating-panel > button:focus-visible {
-    outline: 3px solid rgba(31, 122, 140, 0.25);
+    outline: 2px solid rgba(31, 122, 140, 0.2);
     outline-offset: 2px;
 }
 
@@ -80,7 +80,7 @@
 
 .editor-notification {
     min-height: 1rem;
-    color: #5c6673;
+    color: #64717f;
     font-size: 0.8rem;
     font-weight: 650;
 }
@@ -114,6 +114,10 @@ root-node {
     text-align: center;
 }
 
+#editor-container input:placeholder-shown {
+    opacity: 0.5;
+}
+
 syntax-node {
     display: flex;
     position: relative;
@@ -122,9 +126,15 @@ syntax-node {
     align-items: center;
 }
 
+.word {
+    padding: 0 0.5rem;
+    min-width: 5rem;
+}
+
 .selected > .word-node > .word {
-    outline: 0.2rem solid #a66c26;
-    border-radius: 1rem;
+    background: #f1a03d25;
+    border-radius: 999px;
+    box-shadow: inset 0 0 0 1px #f1a03d38;
 }
 
 .syntax-node {
@@ -136,7 +146,7 @@ syntax-node {
 
 .line {
     border-top: 2.4px solid #424242;
-    margin: 0.5rem 1rem 0;
+    margin: 0.5rem 0.8rem 0;
 }
 
 .selected > .syntax-node > .line {
@@ -158,12 +168,12 @@ syntax-node {
 .node-action-buttons > button {
     width: 1.8rem;
     height: 1.8rem;
-    border: 1px solid #a66c26;
+    border: 1px solid #d7dfe8;
     border-radius: 999px;
     padding: 0;
-    color: #4b3216;
-    background: #fffaf2;
-    box-shadow: 0 0.35rem 1rem rgba(58, 43, 25, 0.16);
+    color: #1d2430;
+    background: #ffffff;
+    box-shadow: none;
     font: inherit;
     font-size: 0.95rem;
     font-weight: 650;
@@ -172,11 +182,11 @@ syntax-node {
 }
 
 .node-action-buttons > button:hover {
-    background: #f6ead7;
+    background: #f7f9fb;
 }
 
 .node-action-buttons > button:focus-visible {
-    outline: 3px solid rgba(166, 108, 38, 0.28);
+    outline: 2px solid rgba(31, 122, 140, 0.2);
     outline-offset: 2px;
 }
 
@@ -203,13 +213,15 @@ syntax-node {
     margin-left: 1rem;
 }
 
+.comment, .comment-input {
+    color: #5b5b5b;
+}
+
 .analysis {
     margin-bottom: 1.5rem;
-    margin-left: 1rem;
-    margin-right: 1rem;
+    padding: 0 1rem;
     display: flex;
     justify-content: center;
-    gap: 0.25rem;
     font-weight: 670;
     font-size: 1.2rem;
     min-height: 1.6rem;
@@ -217,6 +229,7 @@ syntax-node {
 
 .slash {
     color: #00000076;
+    margin: 0 0.25rem;
 }
 
 .category, .category-input {
@@ -227,16 +240,20 @@ syntax-node {
     color: #2f6b7f;
 }
 
+.function, .category, .comment {
+    width: max-content;
+}
 
 
 .word-node {
-    margin: 0 2rem;
+    padding: 0 0.8rem;
     font-size: 2.4rem;
     font-weight: bold;
     text-align: center;
     display: flex;
     flex-direction: column;
     justify-content: center;
+    user-select: none;
 }
 
 .word-comment, .word-comment-input {
@@ -251,4 +268,11 @@ syntax-node {
     font-size: 2.4rem;
     height: fit-content;
     font-weight: bold;
+}
+
+.drag-target > .word-node > .word {
+    background: rgba(31, 122, 140, 0.12);
+    color: #155d6d;
+    box-shadow: inset 0 0 0 1px rgba(31, 122, 140, 0.25);
+    border-radius: 999px;
 }
