@@ -126,6 +126,7 @@ root-node {
     min-width: 2.5rem;
     height: 1.1rem;
     margin-top: 0.35rem;
+    
 }
 
 #editor-container .editing > input:placeholder-shown {
@@ -142,6 +143,7 @@ root-node {
     overflow: hidden;
     background: none;
     border-radius: 0.5rem;
+    padding: 0.5rem;
 }
 
 .autocomplete-list {
@@ -151,9 +153,10 @@ root-node {
     overflow-y: auto;
     padding: 0.25rem;
     background: #ffffff;
-    scrollbar-width: none;
+    scrollbar-width: thin;
     border: 1px solid #d4dbe4;
     border-radius: 0.5rem;
+    box-shadow: 0.2rem 0.2rem 0.3rem rgba(29, 36, 48, 0.16);
 }
 
 .autocomplete-details {
@@ -162,11 +165,13 @@ root-node {
     flex-direction: column;
     gap: 0.2rem;
     min-width: 12rem;
+    margin-left: 0.2rem;
     height: fit-content;
     padding: 0.55rem 0.7rem;
     border-left: 1px solid #e3e8ef;
     background: #f8fafc;
     border-radius: 0.5rem;
+    box-shadow: 0.1rem 0.1rem 0.2rem rgba(29, 36, 48, 0.16);
 }
 
 .autocomplete-option {
@@ -194,6 +199,10 @@ root-node {
 .autocomplete-option.active {
     color: #155d6d;
     background: rgba(31, 122, 140, 0.12);
+}
+
+.autocomplete-option:hover {
+    background: rgba(4, 194, 232, 0.12);
 }
 
 .autocomplete-option:hover .autocomplete-option-value,
@@ -341,6 +350,7 @@ syntax-node {
     flex-direction: column;
     justify-content: center;
     user-select: none;
+    touch-action: none;
 }
 
 .word-comment, .word-comment-input {

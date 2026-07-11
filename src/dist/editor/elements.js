@@ -54,15 +54,15 @@ export class SyntaxNodeEl extends BoxNodeEl {
                 <div class="children"></div>
                 <div class="line"></div>
                 <div class="analysis">
-                    <input class="category-input" placeholder="cat">
+                    <input class="category-input" placeholder="cat" spellcheck="false">
 
                     <span class="category"></span>
                     <span class="slash" style="display: none">/</span>
                     <span class="function"></span>
                     <span class="comment" style="display: none"></span>
 
-                    <input class="function-input" placeholder="func">
-                    <input class="comment-input" placeholder="com">
+                    <input class="function-input" placeholder="func" spellcheck="false">
+                    <input class="comment-input" placeholder="com" spellcheck="false">
                 </div>
             </div>
         `;
@@ -147,7 +147,7 @@ export class WordNodeEl extends HTMLElement {
                 <div class="word-comment"></div>
                 <div class="word"></div>
 
-                <input class="word-comment-input" placeholder="comentario">
+                <input class="word-comment-input" placeholder="comentario" spellcheck="false">
                 <input class="word-input" placeholder="palabra">
             </div>
         `;

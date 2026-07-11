@@ -11,6 +11,9 @@ export class SyntaxEditor {
         this.notificationTimeout = null;
         this.autocomplete = new FieldAutocomplete();
         this.elementMapping = new Map();
+        this.autoScrollAnimationFrame = null;
+        this.lastPointerX = 0;
+        this.lastPointerY = 0;
         this.state = {
             selectedNodeId: null,
             editing: {
@@ -36,6 +39,7 @@ export class SyntaxEditor {
             }
             this.clearPointerState();
             this.clearDragHighlight();
+            this.startAutoScroll();
         };
         this.onKeyDown = (event) => {
             if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
@@ -117,22 +121,15 @@ export class SyntaxEditor {
                 return;
             const MIN_PIXELS_MOVED = 20;
             const currentPos = this.getMousePosition(event);
+            const rect = this.appEl.getBoundingClientRect();
+            this.lastPointerX = event.clientX - rect.left;
+            this.lastPointerY = event.clientY - rect.top;
             const didMove = (distance(this.state.pointer.startMousePosition, currentPos) > MIN_PIXELS_MOVED);
             const didJustStartMoving = (didMove && !this.state.pointer.didMove);
             (_a = this.state.pointer).didMove || (_a.didMove = didMove);
-            let endWordToken;
-            const clicked = this.getClickedNode(event);
-            if (clicked.type !== 'word') {
-                endWordToken = this.state.pointer.endWordToken ?? this.state.pointer.startWordToken;
-            }
-            else {
-                endWordToken = this.tree.getNode(clicked.nodeEl.nodeId).token;
-            }
-            const didChangeDragged = ((this.state.pointer.endWordToken !== endWordToken) || didJustStartMoving);
-            this.state.pointer.endWordToken = endWordToken;
-            if (didChangeDragged) {
-                this.updateDragHighlight();
-            }
+            if (didJustStartMoving)
+                this.startAutoScroll();
+            this.updateDragSelection(event.clientX);
             function distance(pos1, pos2) {
                 const dx = pos1.x - pos2.x;
                 const dy = pos1.y - pos2.y;
@@ -157,6 +154,7 @@ export class SyntaxEditor {
             this.insertBoxAtRange(this.state.pointer.startWordToken, this.state.pointer.endWordToken);
             this.clearPointerState();
             this.clearDragHighlight();
+            this.stopAutoScroll();
         };
         this.tree = new SyntaxTree(json);
         this.rootEl = document.createElement('root-node');
@@ -305,6 +303,25 @@ export class SyntaxEditor {
             didMove: false,
             startMousePosition: null
         };
+    }
+    updateDragSelection(clientX) {
+        if (!this.state.pointer.isDragging)
+            return;
+        const pointer = this.state.pointer;
+        const underPointer = document.elementFromPoint(clientX, this.lastPointerY);
+        let endWordToken = pointer.endWordToken ?? pointer.startWordToken;
+        if (underPointer) {
+            const wordContEl = underPointer.closest('.word-node');
+            const wordEl = underPointer.closest('word-node');
+            if (wordEl && wordContEl) {
+                endWordToken = this.tree.getNode(wordEl.nodeId).token;
+            }
+        }
+        const didChangeDragged = (pointer.endWordToken !== endWordToken);
+        pointer.endWordToken = endWordToken;
+        if (didChangeDragged) {
+            this.updateDragHighlight();
+        }
     }
     clearDragHighlight() {
         document.querySelectorAll('.drag-target').forEach((element) => {
@@ -546,6 +563,38 @@ export class SyntaxEditor {
         this.startEditing();
         this.registerTreeChange(previousJSON);
         this.showNotification('Caja creada');
+    }
+    startAutoScroll() {
+        if (this.autoScrollAnimationFrame !== null)
+            return;
+        const tick = () => {
+            if (!this.state.pointer.didMove) {
+                this.autoScrollAnimationFrame = null;
+                return;
+            }
+            this.updateAutoScroll();
+            this.autoScrollAnimationFrame = requestAnimationFrame(tick);
+        };
+        tick();
+    }
+    stopAutoScroll() {
+        if (this.autoScrollAnimationFrame !== null) {
+            cancelAnimationFrame(this.autoScrollAnimationFrame);
+            this.autoScrollAnimationFrame = null;
+        }
+    }
+    updateAutoScroll() {
+        const EDGE = 40;
+        const rect = this.appEl.getBoundingClientRect();
+        let speed = 0;
+        if (this.lastPointerX < rect.left + EDGE) {
+            speed = this.lastPointerX - EDGE;
+        }
+        else if (this.lastPointerX > rect.right - EDGE) {
+            speed = EDGE - (rect.right - this.lastPointerX);
+        }
+        this.appEl.scrollLeft += speed * 0.5;
+        this.updateDragSelection(this.lastPointerX + rect.left);
     }
 }
 function cloneReducedJSON(json) {

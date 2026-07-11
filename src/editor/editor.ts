@@ -20,7 +20,10 @@ export class SyntaxEditor {
     private redoStack: ReducedJSON[] = [];
     private notificationTimeout: number | null = null;
     private autocomplete = new FieldAutocomplete();
-    elementMapping: Map<NodeId, AnyNodeEl> = new Map();
+    private elementMapping: Map<NodeId, AnyNodeEl> = new Map();
+    private autoScrollAnimationFrame: number | null = null;
+    private lastPointerX = 0;
+    private lastPointerY = 0;
 
     state: EditorState = {
         selectedNodeId: null,
@@ -184,6 +187,7 @@ export class SyntaxEditor {
         }
         this.clearPointerState();
         this.clearDragHighlight();
+        this.startAutoScroll();
     };
 
     private onKeyDown = (event: KeyboardEvent) => {
@@ -271,22 +275,15 @@ export class SyntaxEditor {
         const MIN_PIXELS_MOVED = 20;
         
         const currentPos = this.getMousePosition(event);
+        const rect = this.appEl.getBoundingClientRect();
+        this.lastPointerX = event.clientX - rect.left;
+        this.lastPointerY = event.clientY - rect.top;
         const didMove = (distance(this.state.pointer.startMousePosition, currentPos) > MIN_PIXELS_MOVED);
         const didJustStartMoving = (didMove && !this.state.pointer.didMove);
         this.state.pointer.didMove ||= didMove;
-        
-        let endWordToken: number;
-        const clicked = this.getClickedNode(event);
-        if (clicked.type !== 'word') {
-            endWordToken = (this.state.pointer.endWordToken as number | null) ?? this.state.pointer.startWordToken;
-        } else {
-            endWordToken = (this.tree.getNode(clicked.nodeEl.nodeId) as WordNode).token;
-        }
-        const didChangeDragged = ((this.state.pointer.endWordToken !== endWordToken) || didJustStartMoving);
-        this.state.pointer.endWordToken = endWordToken; 
-        if (didChangeDragged) {
-            this.updateDragHighlight();
-        }
+        if (didJustStartMoving) this.startAutoScroll();
+
+        this.updateDragSelection(event.clientX);
 
         function distance(pos1: Position, pos2: Position): number {
             const dx = pos1.x - pos2.x;
@@ -313,6 +310,7 @@ export class SyntaxEditor {
         this.insertBoxAtRange(this.state.pointer.startWordToken, this.state.pointer.endWordToken);
         this.clearPointerState();
         this.clearDragHighlight();
+        this.stopAutoScroll();
     }
 
     private getClickedNode(event: PointerEvent): ClickedData {
@@ -347,6 +345,28 @@ export class SyntaxEditor {
             didMove: false,
             startMousePosition: null
         };
+    }
+
+    private updateDragSelection(clientX: number) {
+        if (!this.state.pointer.isDragging) return;
+        const pointer = this.state.pointer as PointerDataActive;
+
+        const underPointer = document.elementFromPoint(clientX, this.lastPointerY);
+        let endWordToken = pointer.endWordToken ?? pointer.startWordToken;
+
+        if (underPointer) {
+            const wordContEl = underPointer.closest('.word-node') as HTMLDivElement | null;
+            const wordEl = underPointer.closest('word-node') as WordNodeEl | null;
+            if (wordEl && wordContEl) {
+                endWordToken = (this.tree.getNode(wordEl.nodeId) as WordNode).token;
+            }
+        }
+
+        const didChangeDragged = (pointer.endWordToken !== endWordToken);
+        pointer.endWordToken = endWordToken;
+        if (didChangeDragged) {
+            this.updateDragHighlight();
+        }
     }
 
     private clearDragHighlight() {
@@ -618,6 +638,43 @@ export class SyntaxEditor {
         this.startEditing();
         this.registerTreeChange(previousJSON);
         this.showNotification('Caja creada');
+    }
+
+    private startAutoScroll() {
+        if (this.autoScrollAnimationFrame !== null) return;
+
+        const tick = () => {
+            if (!this.state.pointer.didMove) {
+                this.autoScrollAnimationFrame = null;
+                return;
+            }
+            this.updateAutoScroll();
+            this.autoScrollAnimationFrame = requestAnimationFrame(tick);
+        };
+        tick();
+    }
+
+    private stopAutoScroll() {
+        if (this.autoScrollAnimationFrame !== null) {
+            cancelAnimationFrame(this.autoScrollAnimationFrame);
+            this.autoScrollAnimationFrame = null;
+        }
+    }
+
+    private updateAutoScroll() {
+        const EDGE = 40;
+        const rect = this.appEl.getBoundingClientRect();
+
+        let speed = 0;
+        if (this.lastPointerX < rect.left + EDGE) {
+            speed = this.lastPointerX - EDGE;
+        }
+        else if (this.lastPointerX > rect.right - EDGE) {
+            speed = EDGE - (rect.right - this.lastPointerX);
+        }
+
+        this.appEl.scrollLeft += speed * 0.5;
+        this.updateDragSelection(this.lastPointerX + rect.left);
     }
 }
 

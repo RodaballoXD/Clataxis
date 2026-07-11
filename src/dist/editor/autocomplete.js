@@ -1,29 +1,4 @@
-export const AUTOCOMPLETE_SUGGESTIONS = {
-    // Edita estas listas manualmente para cambiar las sugerencias.
-    category: [
-        { value: 'SN', fullName: 'Sintagma nominal', description: 'Categoría sintáctica para grupos nominales.' },
-        { value: 'SV', fullName: 'Sintagma verbal', description: 'Categoría sintáctica para grupos verbales.' },
-        { value: 'SAdj', fullName: 'Sintagma adjetival', description: 'Categoría sintáctica para grupos adjetivales.' },
-        { value: 'SAdv', fullName: 'Sintagma adverbial', description: 'Categoría sintáctica para grupos adverbiales.' },
-        { value: 'SPrep', fullName: 'Sintagma preposicional', description: 'Categoría sintáctica para grupos introducidos por una preposición.' },
-        { value: 'Suj', fullName: 'Sujeto', description: 'Función que realiza la persona o cosa de la que se dice algo.' },
-        { value: 'Pred', fullName: 'Predicado', description: 'Función que expresa lo que se dice del sujeto.' },
-        { value: 'OrSub', fullName: 'Oración subordinada', description: 'Oración que depende sintácticamente de otra.' },
-        { value: 'OrCo', fullName: 'Oración coordinada', description: 'Oración unida a otra mediante coordinación.' }
-    ],
-    function: [
-        { value: 'Núc', fullName: 'Núcleo', description: 'Elemento principal que organiza el sintagma.' },
-        { value: 'Det', fullName: 'Determinante', description: 'Palabra que acompaña al nombre y lo delimita.' },
-        { value: 'CD', fullName: 'Complemento directo', description: 'Complemento que recibe directamente la acción del verbo.' },
-        { value: 'CI', fullName: 'Complemento indirecto', description: 'Complemento que recibe la acción de forma indirecta.' },
-        { value: 'CC', fullName: 'Complemento circunstancial', description: 'Complemento que añade información de circunstancias.' },
-        { value: 'CN', fullName: 'Complemento del nombre', description: 'Complemento que depende de un nombre.' },
-        { value: 'Atr', fullName: 'Atributo', description: 'Complemento que especifica una cualidad del sujeto o del nombre.' },
-        { value: 'Pred', fullName: 'Predicativo', description: 'Complemento que expresa una cualidad del sujeto o del CD.' },
-        { value: 'Voc', fullName: 'Vocativo', description: 'Elemento que nombra al interlocutor en la oración.' },
-        { value: 'Apos', fullName: 'Aposición', description: 'Elemento que explica o identifica a otro de forma explicativa.' }
-    ]
-};
+import { AUTOCOMPLETE_SUGGESTIONS } from "../analysis-behaviour/autocomplete-suggestions.js";
 const MAX_SUGGESTIONS = 64;
 export class FieldAutocomplete {
     constructor() {
@@ -41,8 +16,8 @@ export class FieldAutocomplete {
             const viewportWidth = window.innerWidth - 16;
             const panelWidth = Math.min(Math.max(rect.width, 220), viewportWidth);
             const left = Math.max(8, Math.min(rect.left, viewportWidth - panelWidth));
-            this.panelEl.style.left = `${left}px`;
-            this.panelEl.style.top = `${rect.bottom + 4}px`;
+            this.panelEl.style.left = `${left - 10}px`;
+            this.panelEl.style.top = `${rect.bottom - 6}px`;
             this.panelEl.style.minWidth = `${panelWidth}px`;
         };
         this.panelEl = document.createElement('div');
@@ -85,7 +60,7 @@ export class FieldAutocomplete {
             }
             event.preventDefault();
             const delta = (event.key === 'ArrowDown') ? 1 : -1;
-            this.selectIndex(this.activeIndex + delta);
+            this.selectIndex(this.activeIndex + delta, delta);
             return true;
         }
         if (!this.isVisible())
@@ -112,6 +87,7 @@ export class FieldAutocomplete {
             this.activeInput = input;
             this.activeField = field;
             this.refresh();
+            this.scheduleReposition();
         };
         const onInput = () => this.refresh();
         const onBlur = () => {
@@ -179,12 +155,15 @@ export class FieldAutocomplete {
         anchorInput.setAttribute('aria-expanded', 'true');
         this.selectIndex(this.activeIndex);
         this.reposition();
+        this.scheduleReposition();
         this.panelEl.style.display = '';
     }
-    selectIndex(index) {
+    selectIndex(index, direction = 0) {
         if (this.currentSuggestions.length === 0)
             return;
         this.activeIndex = (index + this.currentSuggestions.length) % this.currentSuggestions.length;
+        if (this.activeIndex !== index)
+            direction *= -1;
         const options = [...this.listEl.querySelectorAll('.autocomplete-option')];
         options.forEach((optionEl, optionIndex) => {
             const isActive = optionIndex === this.activeIndex;
@@ -192,11 +171,16 @@ export class FieldAutocomplete {
             optionEl.setAttribute('aria-selected', String(isActive));
             if (isActive) {
                 this.activeInput?.setAttribute('aria-activedescendant', optionEl.id);
+                const scrollTo = options[optionIndex + direction];
                 optionEl.scrollIntoView({ block: 'nearest' });
+                if (scrollTo)
+                    scrollTo.scrollIntoView({ block: 'nearest' });
+                else
+                    optionEl.scrollIntoView({ block: 'center' });
             }
         });
         this.updateDetails();
-        this.reposition();
+        this.scheduleReposition();
     }
     updateDetails() {
         const suggestion = this.currentSuggestions[this.activeIndex];
@@ -249,6 +233,10 @@ export class FieldAutocomplete {
         if (activeElement instanceof HTMLInputElement)
             return activeElement;
         return this.activeInput;
+    }
+    scheduleReposition() {
+        this.reposition();
+        requestAnimationFrame(this.reposition);
     }
 }
 function getRankedSuggestions(query, suggestions) {
