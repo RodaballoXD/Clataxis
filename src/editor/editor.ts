@@ -2,6 +2,7 @@ import { AnyNodeEl, InputFieldEls, RootNodeEl, SyntaxNodeEl, WordNodeData, WordN
 import type { EditorInterfaceEls } from "./editor-screen.js";
 import type { AnalysisData, NodeId, ReducedJSON, SyntaxNode, WordNode } from "./tree.js";
 import { SyntaxTree } from "./tree.js";
+import { FieldAutocomplete } from "./autocomplete.js";
 
 const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 4;
@@ -18,6 +19,7 @@ export class SyntaxEditor {
     private undoStack: ReducedJSON[] = [];
     private redoStack: ReducedJSON[] = [];
     private notificationTimeout: number | null = null;
+    private autocomplete = new FieldAutocomplete();
     elementMapping: Map<NodeId, AnyNodeEl> = new Map();
 
     state: EditorState = {
@@ -61,6 +63,7 @@ export class SyntaxEditor {
         this.appEl.removeEventListener('pointerup', this.onPointerUp);
         this.appEl.removeEventListener('pointercancel', this.onPointerCancel);
         document.removeEventListener('keydown', this.onKeyDown, true);
+        this.autocomplete.destroy();
         if (this.notificationTimeout !== null) {
             window.clearTimeout(this.notificationTimeout);
         }
@@ -200,6 +203,9 @@ export class SyntaxEditor {
         }
 
         if (this.state.editing.isEditing) {
+            if (this.autocomplete.handleKeyDown(event)) {
+                return;
+            }
             if (event.key === 'Enter' || event.key === 'Escape') {
                 event.preventDefault();
                 this.finishEditing();
@@ -222,6 +228,9 @@ export class SyntaxEditor {
             }
             else if (event.key === 'Delete') {
                 this.deleteNode();
+            }
+            else if (event.key === 'Escape') {
+                this.selectNode(null);
             }
             return;
         }
@@ -401,7 +410,7 @@ export class SyntaxEditor {
         }
 
         const selectedNode = this.tree.getNode(id);
-        if (selectedNode.type === 'word') {
+        if (selectedNode.type === 'word' || this.state.editing.isEditing) {
             this.selectionActionsEl.remove();
             return;
         }
@@ -489,6 +498,7 @@ export class SyntaxEditor {
             type: element.type,
             field: null
         };
+        this.autocomplete.connect(this.state.editing.elements);
 
         if (field === null) {
             field = (element.type === 'word') ? 'word' : 'category';
@@ -502,6 +512,7 @@ export class SyntaxEditor {
             });
         }
         this.state.editing.field = field;
+        this.updateSelectionPanel();
         this.showNotification('Editando caja');
 
         function getField(event: PointerEvent): EditorState['editing']['field'] {
@@ -514,6 +525,7 @@ export class SyntaxEditor {
             for (const name of classNames) {
                 if (clicked?.classList.contains(name)) {
                     foundClassName = name;
+                    break;
                 }
             }
             if (foundClassName === 'word-comment') foundClassName = 'comment';
@@ -549,6 +561,7 @@ export class SyntaxEditor {
     }
 
     private resetEditingState() {
+        this.autocomplete.connect(null);
         this.state.editing = {
             isEditing: false,
             type: null,
