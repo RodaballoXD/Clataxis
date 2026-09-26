@@ -160,6 +160,7 @@ export class SyntaxEditor {
         const deleteButtonEl = document.createElement('button');
         deleteButtonEl.type = 'button';
         deleteButtonEl.textContent = '🗑';
+        deleteButtonEl.title = 'Eliminar caja (Supr)';
         deleteButtonEl.addEventListener('click', (event) => {
             event.stopPropagation();
             this.deleteNode();
@@ -168,6 +169,7 @@ export class SyntaxEditor {
         const promoteButtonEl = document.createElement('button');
         promoteButtonEl.type = 'button';
         promoteButtonEl.textContent = '⤴';
+        promoteButtonEl.title = 'Quitar caja (Retroceso)';
         promoteButtonEl.addEventListener('click', (event) => {
             event.stopPropagation();
             this.promoteChildren();
@@ -191,6 +193,19 @@ export class SyntaxEditor {
     };
 
     private onKeyDown = (event: KeyboardEvent) => {
+        if (this.state.editing.isEditing) {
+            if (this.autocomplete.handleKeyDown(event)) {
+                return;
+            }
+            if (event.key === 'Enter' || event.key === 'Escape') {
+                event.preventDefault();
+                this.finishEditing();
+                return;
+            }
+            this.handleEditingFieldNavigation(event);
+            return;
+        }
+
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
             event.preventDefault();
             if (event.shiftKey) {
@@ -203,19 +218,6 @@ export class SyntaxEditor {
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'y') {
             event.preventDefault();
             this.redo();
-            return;
-        }
-
-        if (this.state.editing.isEditing) {
-            if (this.autocomplete.handleKeyDown(event)) {
-                return;
-            }
-            if (event.key === 'Enter' || event.key === 'Escape') {
-                event.preventDefault();
-                this.finishEditing();
-                return;
-            }
-            this.handleEditingFieldNavigation(event);
             return;
         }
 
@@ -281,9 +283,13 @@ export class SyntaxEditor {
         const didMove = (distance(this.state.pointer.startMousePosition, currentPos) > MIN_PIXELS_MOVED);
         const didJustStartMoving = (didMove && !this.state.pointer.didMove);
         this.state.pointer.didMove ||= didMove;
-        if (didJustStartMoving) this.startAutoScroll();
+        if (didJustStartMoving) {
+            if (this.state.editing.isEditing) this.finishEditing();
+            this.selectNode(null);
+            this.startAutoScroll();
+        }
 
-        this.updateDragSelection(event.clientX);
+        this.updateDragSelection(event.clientX, didJustStartMoving);
 
         function distance(pos1: Position, pos2: Position): number {
             const dx = pos1.x - pos2.x;
@@ -347,12 +353,12 @@ export class SyntaxEditor {
         };
     }
 
-    private updateDragSelection(clientX: number) {
+    private updateDragSelection(clientX: number, forceHighlightUpdate?: boolean) {
         if (!this.state.pointer.isDragging) return;
-        const pointer = this.state.pointer as PointerDataActive;
+        const pointer = this.state.pointer;
 
         const underPointer = document.elementFromPoint(clientX, this.lastPointerY);
-        let endWordToken = pointer.endWordToken ?? pointer.startWordToken;
+        let endWordToken = pointer.endWordToken as number | null ?? pointer.startWordToken;
 
         if (underPointer) {
             const wordContEl = underPointer.closest('.word-node') as HTMLDivElement | null;
@@ -364,7 +370,7 @@ export class SyntaxEditor {
 
         const didChangeDragged = (pointer.endWordToken !== endWordToken);
         pointer.endWordToken = endWordToken;
-        if (didChangeDragged) {
+        if (didChangeDragged || forceHighlightUpdate) {
             this.updateDragHighlight();
         }
     }
@@ -460,8 +466,8 @@ export class SyntaxEditor {
 
         if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
             const caret = event.target.selectionStart ?? 0;
-            const atStart = caret <= 0;
-            const atEnd = caret >= (event.target.value.length);
+            const atStart = (caret <= 0);
+            const atEnd = (caret >= (event.target.value.length));
             if (event.key === 'ArrowLeft' && atStart) {
                 event.preventDefault();
                 this.focusEditingInput(currentIndex - 1, true);
@@ -496,7 +502,7 @@ export class SyntaxEditor {
 
     private focusEditingInput(index: number, atEnd: boolean) {
         const inputs = this.getEditingInputElements();
-        if (index < 0 || index >= inputs.length) return;
+        if (index < 0 || index >= inputs.length) return; // TODO: Navigate between words
 
         const input = inputs[index];
         input.focus();
@@ -521,7 +527,7 @@ export class SyntaxEditor {
         this.autocomplete.connect(this.state.editing.elements);
 
         if (field === null) {
-            field = (element.type === 'word') ? 'word' : 'category';
+            field = (element.type === 'word') ? 'word' : 'function';
         }
         const inputEl = this.state.editing.elements?.[field];
         if (inputEl) { 

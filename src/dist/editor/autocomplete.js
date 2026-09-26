@@ -42,6 +42,7 @@ export class FieldAutocomplete {
             return;
         this.attachInput(elements.category, 'category');
         this.attachInput(elements.function, 'function');
+        this.selectIndex(0, -1);
     }
     destroy() {
         this.disconnectFields();
@@ -58,6 +59,7 @@ export class FieldAutocomplete {
                 this.refresh();
                 return this.isVisible();
             }
+            ;
             event.preventDefault();
             const delta = (event.key === 'ArrowDown') ? 1 : -1;
             this.selectIndex(this.activeIndex + delta, delta);
@@ -68,7 +70,7 @@ export class FieldAutocomplete {
         if ((event.key === 'Enter' || event.key === 'Tab')) {
             event.preventDefault();
             this.acceptActiveSuggestion();
-            return true;
+            return (event.key === 'Tab');
         }
         if (event.key === 'Escape') {
             event.preventDefault();
@@ -84,15 +86,14 @@ export class FieldAutocomplete {
         input.setAttribute('role', 'combobox');
         input.setAttribute('aria-autocomplete', 'list');
         const onFocus = () => {
+            this.hide();
             this.activeInput = input;
             this.activeField = field;
-            this.refresh();
-            this.scheduleReposition();
         };
         const onInput = () => this.refresh();
         const onBlur = () => {
             window.setTimeout(() => {
-                if (document.activeElement !== input)
+                if (this.activeInput === input && document.activeElement !== input)
                     this.hide();
             });
         };

@@ -237,7 +237,7 @@ syntax-node {
 }
 
 .word, .word-input {
-    padding: 0 0.5rem;
+    padding: 0 0.6rem 0.6rem;
 }
 
 .selected > .word-node > .word {

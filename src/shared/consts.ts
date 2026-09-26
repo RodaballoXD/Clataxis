@@ -1,6 +1,6 @@
 import type { ReducedJSON } from "../editor/tree.js";
 
-export const exampleSentence = "El gato come pescado";
+export const exampleSentence = "Mi gato come pescado";
 
 export const longReducedJSON: ReducedJSON = [
     {

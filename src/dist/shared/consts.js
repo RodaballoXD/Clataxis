@@ -1,4 +1,4 @@
-export const exampleSentence = "El gato come pescado";
+export const exampleSentence = "Mi gato come pescado";
 export const longReducedJSON = [
     {
         fun: null,
