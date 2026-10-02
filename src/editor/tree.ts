@@ -386,7 +386,7 @@ export function sentenceToReducedJSON(sentence: string): ReducedJSON | null {
     }
 
     const words = sentence.split(/\s+/);
-    return words.map(word => { return {cont: word} });
+    return words;
 }
 
 

@@ -1,8 +1,6 @@
 import { SyntaxTree } from "./tree.js";
 import { FieldAutocomplete } from "./autocomplete.js";
-const MIN_ZOOM = 0.2;
-const MAX_ZOOM = 4;
-const ZOOM_STEP = 0.1;
+const ZOOM_STEPS = [0.25, 0.3, 0.4, 0.5, 0.6, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4];
 export class SyntaxEditor {
     constructor(json, onChange = () => { }, controls) {
         this.zoom = 1;
@@ -232,16 +230,18 @@ export class SyntaxEditor {
         this.showNotification('Rehecho');
     }
     installControlListeners() {
-        this.controls.zoomInButtonEl.addEventListener('click', () => this.changeZoom(ZOOM_STEP));
-        this.controls.zoomOutButtonEl.addEventListener('click', () => this.changeZoom(-ZOOM_STEP));
+        this.controls.zoomInButtonEl.addEventListener('click', () => this.changeZoom(true));
+        this.controls.zoomOutButtonEl.addEventListener('click', () => this.changeZoom(false));
         this.controls.undoButtonEl.addEventListener('click', () => this.undo());
         this.controls.redoButtonEl.addEventListener('click', () => this.redo());
     }
-    changeZoom(delta) {
-        const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, this.zoom + delta));
+    changeZoom(isIn) {
+        const currentIndex = ZOOM_STEPS.indexOf(this.zoom);
+        const nextIndex = (isIn) ? Math.min(currentIndex + 1, ZOOM_STEPS.length - 1) : Math.max(currentIndex - 1, 0);
+        const nextZoom = ZOOM_STEPS[nextIndex];
         this.zoom = Math.round(nextZoom * 100) / 100;
         this.rootEl.style.zoom = String(this.zoom);
-        this.showNotification(`Zoom ${this.zoom.toFixed(1).replace(/\.0$/, '')}x`);
+        this.showNotification(`Zoom ${this.zoom.toFixed(2).replace(/\.0$/, '')}x`);
     }
     updateHistoryButtons() {
         this.controls.undoButtonEl.disabled = this.undoStack.length === 0;

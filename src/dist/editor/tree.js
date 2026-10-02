@@ -346,6 +346,6 @@ export function sentenceToReducedJSON(sentence) {
         sentence = exampleSentence;
     }
     const words = sentence.split(/\s+/);
-    return words.map(word => { return { cont: word }; });
+    return words;
 }
 //# sourceMappingURL=tree.js.map

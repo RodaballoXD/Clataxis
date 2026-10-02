@@ -1,5 +1,6 @@
 import { SyntaxTree } from "../editor/tree.js";
 import type { ReducedJSON } from "../editor/tree.js";
+import { reducedJSONToSyntaxRepr, syntaxReprToReducedJSON } from "../editor/tree-format.js";
 
 const EDITOR_PARAM = 'editor';
 type URLWriteMode = 'push' | 'replace';
@@ -9,7 +10,7 @@ export function getEditorJSONFromURL(): ReducedJSON | null {
     if (!encodedEditor) return null;
 
     try {
-        const parsed = JSON.parse(encodedEditor) as ReducedJSON;
+        const parsed = syntaxReprToReducedJSON(encodedEditor);
         return new SyntaxTree(parsed).toReducedJSON();
     } catch {
         return null;
@@ -18,7 +19,7 @@ export function getEditorJSONFromURL(): ReducedJSON | null {
 
 export function setEditorJSONInURL(json: ReducedJSON, mode: URLWriteMode = 'replace') {
     const url = getCurrentURL();
-    url.searchParams.set(EDITOR_PARAM, JSON.stringify(json));
+    url.searchParams.set(EDITOR_PARAM, reducedJSONToSyntaxRepr(json, null).repr);
     writeURL(url, mode);
 }
 
