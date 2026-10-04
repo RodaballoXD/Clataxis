@@ -112,10 +112,6 @@
     font-size: 1.2rem;
 }
 
-.editor-screen[data-mode="text"] .editor-history-controls {
-    display: none;
-}
-
 .editor-screen[data-mode="text"] #editor-root-container {
     width: 100%;
     min-width: 0;
@@ -278,10 +274,6 @@ root-node {
     white-space: nowrap;
     cursor: pointer;
 }
-.editor-screen[data-mode="text"] .editor-history-controls {
-    display: none;
-}
-
 .editor-screen[data-mode="text"] #editor-root-container {
     width: 100%;
     min-width: 0;

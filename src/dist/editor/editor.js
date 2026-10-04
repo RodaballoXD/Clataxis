@@ -4,8 +4,6 @@ const ZOOM_STEPS = [0.25, 0.3, 0.4, 0.5, 0.6, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4];
 export class SyntaxEditor {
     constructor(json, onChange = () => { }, controls) {
         this.zoom = 1;
-        this.undoStack = [];
-        this.redoStack = [];
         this.notificationTimeout = null;
         this.autocomplete = new FieldAutocomplete();
         this.elementMapping = new Map();
@@ -50,21 +48,6 @@ export class SyntaxEditor {
                     return;
                 }
                 this.handleEditingFieldNavigation(event);
-                return;
-            }
-            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
-                event.preventDefault();
-                if (event.shiftKey) {
-                    this.redo();
-                }
-                else {
-                    this.undo();
-                }
-                return;
-            }
-            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'y') {
-                event.preventDefault();
-                this.redo();
                 return;
             }
             if (event.key === '+') {
@@ -180,7 +163,6 @@ export class SyntaxEditor {
         this.renderTree();
         this.installListeners();
         this.installControlListeners();
-        this.updateHistoryButtons();
     }
     destroy() {
         this.appEl.removeEventListener('pointerdown', this.onPointerDown);
@@ -206,44 +188,15 @@ export class SyntaxEditor {
     snapshot() {
         return cloneReducedJSON(this.tree.toReducedJSON());
     }
-    restoreSnapshot(json) {
-        this.state.selectedNodeId = null;
-        this.resetEditingState();
-        this.tree = new SyntaxTree(cloneReducedJSON(json));
-        this.renderTree();
-        this.notifyChange();
-        this.updateHistoryButtons();
-    }
     registerTreeChange(previousJSON) {
         const currentJSON = this.tree.toReducedJSON();
         if (sameReducedJSON(previousJSON, currentJSON))
             return;
-        this.undoStack.push(cloneReducedJSON(previousJSON));
-        this.redoStack = [];
         this.notifyChange();
-        this.updateHistoryButtons();
-    }
-    undo() {
-        const previous = this.undoStack.pop();
-        if (!previous)
-            return;
-        this.redoStack.push(this.snapshot());
-        this.restoreSnapshot(previous);
-        this.showNotification('Deshecho');
-    }
-    redo() {
-        const next = this.redoStack.pop();
-        if (!next)
-            return;
-        this.undoStack.push(this.snapshot());
-        this.restoreSnapshot(next);
-        this.showNotification('Rehecho');
     }
     installControlListeners() {
         this.controls.zoomInButtonEl.addEventListener('click', () => this.changeZoom(true));
         this.controls.zoomOutButtonEl.addEventListener('click', () => this.changeZoom(false));
-        this.controls.undoButtonEl.addEventListener('click', () => this.undo());
-        this.controls.redoButtonEl.addEventListener('click', () => this.redo());
     }
     changeZoom(isIn) {
         const currentIndex = ZOOM_STEPS.indexOf(this.zoom);
@@ -261,10 +214,6 @@ export class SyntaxEditor {
         if (scrollWidth <= 0)
             return 0.5;
         return scrollLeft / scrollWidth;
-    }
-    updateHistoryButtons() {
-        this.controls.undoButtonEl.disabled = this.undoStack.length === 0;
-        this.controls.redoButtonEl.disabled = this.redoStack.length === 0;
     }
     installListeners() {
         this.appEl.addEventListener('pointerdown', this.onPointerDown);
@@ -634,10 +583,10 @@ export class SyntaxEditor {
         this.updateDragSelection(this.lastPointerX + rect.left);
     }
 }
-function cloneReducedJSON(json) {
-    return JSON.parse(JSON.stringify(json));
-}
 function sameReducedJSON(a, b) {
     return JSON.stringify(a) === JSON.stringify(b);
+}
+function cloneReducedJSON(json) {
+    return JSON.parse(JSON.stringify(json));
 }
 //# sourceMappingURL=editor.js.map

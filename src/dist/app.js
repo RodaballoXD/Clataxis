@@ -12,6 +12,8 @@ export class App {
         this.activeTextEditor = null;
         this.currentEditorJSON = null;
         this.editorMode = 'tree';
+        this.undoStack = [];
+        this.redoStack = [];
         this.onBrowserNavigation = () => {
             const editorJSON = getEditorJSONFromURL();
             if (editorJSON) {
@@ -21,8 +23,50 @@ export class App {
                 this.setScreen('sentence', undefined, 'none');
             }
         };
+        this.undo = () => {
+            const previous = this.undoStack.pop();
+            if (!previous || !this.currentEditorJSON)
+                return;
+            this.redoStack.push(cloneReducedJSON(this.currentEditorJSON));
+            this.currentEditorJSON = previous;
+            setEditorJSONInURL(previous);
+            this.mountEditorMode(this.editorMode);
+        };
+        this.redo = () => {
+            const next = this.redoStack.pop();
+            if (!next || !this.currentEditorJSON)
+                return;
+            this.undoStack.push(cloneReducedJSON(this.currentEditorJSON));
+            this.currentEditorJSON = next;
+            setEditorJSONInURL(next);
+            this.mountEditorMode(this.editorMode);
+        };
+        this.onKeyDown = (event) => {
+            if (!(event.ctrlKey || event.metaKey))
+                return;
+            if (this.editorMode === 'tree') {
+                if (!this.activeEditor || this.activeEditor.state.editing.isEditing)
+                    return;
+            }
+            else if (event.target instanceof HTMLTextAreaElement) {
+                return;
+            }
+            const key = event.key.toLowerCase();
+            if (key === 'z') {
+                event.preventDefault();
+                if (event.shiftKey)
+                    this.redo();
+                else
+                    this.undo();
+            }
+            else if (key === 'y') {
+                event.preventDefault();
+                this.redo();
+            }
+        };
         this.appEl = appEl;
         window.addEventListener('popstate', this.onBrowserNavigation);
+        document.addEventListener('keydown', this.onKeyDown, true);
         const editorJSON = getEditorJSONFromURL();
         if (editorJSON) {
             this.setScreen('editor', editorJSON, 'none');
@@ -37,6 +81,8 @@ export class App {
         this.activeEditor = null;
         this.activeTextEditor?.destroy();
         this.activeTextEditor = null;
+        this.undoStack = [];
+        this.redoStack = [];
         this.appEl.replaceChildren();
         if (screen === 'sentence') {
             this.currentEditorJSON = null;
@@ -67,27 +113,35 @@ export class App {
     switchEditorMode(mode) {
         if (mode === this.editorMode || !this.currentEditorJSON)
             return;
+        this.mountEditorMode(mode);
+    }
+    mountEditorMode(mode) {
+        const json = this.currentEditorJSON;
+        if (!json)
+            return;
         this.activeEditor?.destroy();
         this.activeEditor = null;
         this.activeTextEditor?.destroy();
         this.activeTextEditor = null;
         this.editorMode = mode;
         this.appEl.replaceChildren();
-        this.mountEditorScreen(this.currentEditorJSON, 'none', mode);
+        this.mountEditorScreen(json, 'none', mode);
     }
     mountEditorScreen(json, urlMode, mode) {
         const onReturnToSentenceScreen = () => {
             this.setScreen('sentence', undefined, 'push');
         };
         const editorContainerEls = createEditorInterface(onReturnToSentenceScreen, (nextMode) => this.switchEditorMode(nextMode), mode);
+        editorContainerEls.undoButtonEl.addEventListener('click', this.undo);
+        editorContainerEls.redoButtonEl.addEventListener('click', this.redo);
         this.appEl.appendChild(editorContainerEls.interfaceContainerEl);
+        this.updateHistoryButtons(editorContainerEls.undoButtonEl, editorContainerEls.redoButtonEl);
         if (urlMode !== 'none') {
             setEditorJSONInURL(json, urlMode);
         }
         if (mode === 'tree') {
             const editor = new SyntaxEditor(json, (nextJSON) => {
-                this.currentEditorJSON = nextJSON;
-                setEditorJSONInURL(nextJSON);
+                this.recordAnalysisChange(nextJSON);
             }, editorContainerEls);
             this.activeEditor = editor;
             editor.mount(editorContainerEls.rootContainerEl);
@@ -95,11 +149,33 @@ export class App {
         }
         const initialText = reducedJSONToSyntaxRepr(json, 4).repr;
         const textEditor = new TextSyntaxEditor(initialText, (nextJSON) => {
-            this.currentEditorJSON = nextJSON;
-            setEditorJSONInURL(nextJSON);
+            this.recordAnalysisChange(nextJSON);
         }, editorContainerEls);
         this.activeTextEditor = textEditor;
         textEditor.mount(editorContainerEls.rootContainerEl);
     }
+    recordAnalysisChange(nextJSON) {
+        if (!this.currentEditorJSON || sameReducedJSON(this.currentEditorJSON, nextJSON))
+            return;
+        this.undoStack.push(cloneReducedJSON(this.currentEditorJSON));
+        this.redoStack = [];
+        this.currentEditorJSON = cloneReducedJSON(nextJSON);
+        setEditorJSONInURL(this.currentEditorJSON);
+        this.updateHistoryButtons();
+    }
+    updateHistoryButtons(undoButtonEl, redoButtonEl) {
+        undoButtonEl ?? (undoButtonEl = this.appEl.querySelector('.editor-history-controls button:first-child') ?? undefined);
+        redoButtonEl ?? (redoButtonEl = this.appEl.querySelector('.editor-history-controls button:last-child') ?? undefined);
+        if (!undoButtonEl || !redoButtonEl)
+            return;
+        undoButtonEl.disabled = this.undoStack.length === 0;
+        redoButtonEl.disabled = this.redoStack.length === 0;
+    }
+}
+function cloneReducedJSON(json) {
+    return JSON.parse(JSON.stringify(json));
+}
+function sameReducedJSON(a, b) {
+    return JSON.stringify(a) === JSON.stringify(b);
 }
 //# sourceMappingURL=app.js.map
