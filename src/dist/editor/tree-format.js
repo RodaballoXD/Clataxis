@@ -1,40 +1,57 @@
 export function reducedJSONToSyntaxRepr(reducedJSON, indent) {
-    if (reducedJSON.length === 0)
-        throw new Error('reducedJSONToSyntaxRepr: reducedJSON is empty');
-    if (reducedJSON.every((boxOrWord) => typeof boxOrWord === 'string')) {
-        return { repr: `"${reducedJSON.map((word) => escape(word)).join(' ')}"`, shouldEncapsulate: false };
+    const repr = formatSequence(reducedJSON, 0);
+    return { repr, shouldEncapsulate: reducedJSON.some(isBox) };
+    function formatSequence(nodes, depth) {
+        if (nodes.length === 0)
+            throw new Error('reducedJSONToSyntaxRepr: reducedJSON is empty');
+        if (nodes.every(isWord)) {
+            const words = nodes;
+            if (words.every((word) => typeof word === 'string' || !word.com)) {
+                return `"${words.map((word) => escape(typeof word === 'string' ? word : word.cont)).join(' ')}"`;
+            }
+            return words.map(formatWord).join(' ');
+        }
+        const padding = ' '.repeat((indent ?? 0) * depth);
+        return nodes.map((node) => `${padding}${formatNode(node, depth)}`).join(indent === null ? '' : '\n');
     }
-    const spaceMaybe = (indent === null) ? '' : ' ';
-    return { repr: reducedJSON.map((boxOrWord) => {
-            const isBox = Object.keys(boxOrWord).includes('fun');
-            if (isBox) {
-                const box = boxOrWord;
-                const content = reducedJSONToSyntaxRepr(box.cont, indent);
-                let contentRepr = content.repr;
-                if (content.shouldEncapsulate) {
-                    contentRepr = (indent === null)
-                        ? `(${contentRepr})`
-                        : `(${('\n' + contentRepr).replace(/\n/g, `\n${' '.repeat(indent)}`)}\n)`;
-                }
-                return `${analysis(box)}${spaceMaybe}${(box.com) ? `[${escape(box.com)}]${spaceMaybe}` : ''}(${contentRepr})`;
-            }
-            const word = boxOrWord;
-            if (typeof word === 'string')
-                return `"${escape(word)}"`;
-            if (!word.com)
-                return `"${escape(word.cont)}"`;
-            return `"${escape(word.cont)}"${spaceMaybe}[${escape(word.com)}]`;
-            function analysis(box) {
-                if (!box.fun && !box.cat)
-                    return '/';
-                if (!box.fun)
-                    return `${escape(box.cat)}/`;
-                if (!box.cat)
-                    return `${escape(box.fun)}`;
-                return `${escape(box.cat)}/${escape(box.fun)}`;
-            }
-        }).join(indent === null ? '' : `\n${' '.repeat(indent)}`),
-        shouldEncapsulate: (reducedJSON.length > 1 && !Object.keys(reducedJSON[0]).includes('fun')) };
+    function formatNode(node, depth) {
+        if (isWord(node))
+            return formatWord(node);
+        const box = node;
+        const spaceMaybe = (indent === null) ? '' : ' ';
+        const comment = box.com ? `${spaceMaybe}[${escape(box.com)}]` : '';
+        const prefix = `${analysis(box)}${comment}`;
+        const contentsAreWords = box.cont.every(isWord);
+        const content = formatSequence(box.cont, depth + 1);
+        if (contentsAreWords)
+            return `${prefix}${spaceMaybe}${content}`;
+        const body = (indent === null)
+            ? `(${content})`
+            : `(\n${content}\n${' '.repeat(indent * depth)})`;
+        return `${prefix}${spaceMaybe}${body}`;
+    }
+    function formatWord(word) {
+        if (typeof word === 'string')
+            return `"${escape(word)}"`;
+        const spaceMaybe = (indent === null) ? '' : ' ';
+        const comment = word.com ? `${spaceMaybe}[${escape(word.com)}]` : '';
+        return `"${escape(word.cont)}"${comment}`;
+    }
+    function analysis(box) {
+        if (!box.fun && !box.cat)
+            return '/';
+        if (!box.fun)
+            return `${escape(box.cat)}/`;
+        if (!box.cat)
+            return `${escape(box.fun)}`;
+        return `${escape(box.cat)}/${escape(box.fun)}`;
+    }
+    function isWord(node) {
+        return typeof node === 'string' || typeof node.cont === 'string';
+    }
+    function isBox(node) {
+        return typeof node !== 'string' && Array.isArray(node.cont);
+    }
 }
 export function syntaxReprToReducedJSON(syntaxRepr) {
     let index = 0;

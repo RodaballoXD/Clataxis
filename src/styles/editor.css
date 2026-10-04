@@ -7,7 +7,8 @@
 }
 
 .editor-floating-button,
-.editor-floating-panel > button {
+.editor-floating-panel > button,
+.editor-mode-selector > button {
     height: 2.25rem;
     min-width: 2.25rem;
     border: 1px solid #d7dfe8;
@@ -23,12 +24,14 @@
 }
 
 .editor-floating-button:hover,
-.editor-floating-panel > button:hover {
+.editor-floating-panel > button:hover,
+.editor-mode-selector > button:hover {
     background: #f7f9fb;
 }
 
 .editor-floating-button:focus-visible,
-.editor-floating-panel > button:focus-visible {
+.editor-floating-panel > button:focus-visible,
+.editor-mode-selector > button:focus-visible {
     outline: 2px solid rgba(31, 122, 140, 0.2);
     outline-offset: 2px;
 }
@@ -62,6 +65,26 @@
     z-index: 10;
 }
 
+.editor-text-controls {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 10;
+    display: none;
+}
+
+.editor-screen[data-mode="text"] .editor-zoom-controls {
+    display: none;
+}
+
+.editor-screen[data-mode="text"] .editor-text-controls {
+    display: flex;
+}
+
+.editor-text-controls > button {
+    font-size: 0.85rem;
+}
+
 .editor-history-panel {
     position: fixed;
     left: 50%;
@@ -87,6 +110,43 @@
 
 .editor-history-controls > button {
     font-size: 1.2rem;
+}
+
+.editor-screen[data-mode="text"] .editor-history-controls {
+    display: none;
+}
+
+.editor-screen[data-mode="text"] #editor-root-container {
+    width: 100%;
+    min-width: 0;
+    height: 100vh;
+    min-height: 0;
+    padding: 5rem 2rem 4.5rem;
+    place-items: stretch;
+}
+
+.syntax-text-editor {
+    width: 100%;
+    height: 100%;
+    min-height: 16rem;
+    box-sizing: border-box;
+    resize: none;
+    border: 1px solid #cbd4dd;
+    border-radius: 0.5rem;
+    padding: 1.25rem;
+    color: #202a34;
+    background: #ffffff;
+    font-family: Consolas, "Cascadia Code", monospace;
+    font-size: 0.95rem;
+    line-height: 1.55;
+    tab-size: 2;
+    white-space: pre;
+    overflow: auto;
+}
+
+.syntax-text-editor:focus-visible {
+    outline: 2px solid rgba(31, 122, 140, 0.35);
+    outline-offset: 1px;
 }
 
 #editor-root-container {
@@ -137,7 +197,6 @@ root-node {
 .autocomplete-panel {
     position: fixed;
     z-index: 50;
-    display: flex;
     align-items: stretch;
     max-height: 14rem;
     overflow: hidden;
@@ -158,6 +217,35 @@ root-node {
     border-radius: 0.5rem;
     box-shadow: 0.2rem 0.2rem 0.3rem rgba(29, 36, 48, 0.16);
 }
+.editor-mode-selector {
+    position: fixed;
+    top: 1rem;
+    left: 50%;
+    z-index: 10;
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    border: 1px solid #d7dfe8;
+    border-radius: 0.9rem;
+    background: #e9edf1;
+    transform: translateX(-50%);
+}
+
+.editor-mode-selector > button {
+    border-color: transparent;
+    background: transparent;
+}
+
+.editor-mode-selector > button:not(.is-active) {
+    color: #687482;
+}
+
+.editor-mode-selector > button.is-active {
+    border-color: #d7dfe8;
+    color: #1d2430;
+    background: #ffffff;
+}
+
 
 .autocomplete-details {
     display: flex;
@@ -190,6 +278,43 @@ root-node {
     white-space: nowrap;
     cursor: pointer;
 }
+.editor-screen[data-mode="text"] .editor-history-controls {
+    display: none;
+}
+
+.editor-screen[data-mode="text"] #editor-root-container {
+    width: 100%;
+    min-width: 0;
+    height: 100vh;
+    min-height: 0;
+    padding: 5rem 2rem 4.5rem;
+    place-items: stretch;
+}
+
+.syntax-text-editor {
+    width: 100%;
+    height: 100%;
+    min-height: 16rem;
+    box-sizing: border-box;
+    resize: none;
+    border: 1px solid #cbd4dd;
+    border-radius: 0.5rem;
+    padding: 1.25rem;
+    color: #202a34;
+    background: #ffffff;
+    font-family: Consolas, "Cascadia Code", monospace;
+    font-size: 0.95rem;
+    line-height: 1.55;
+    tab-size: 2;
+    white-space: pre;
+    overflow: auto;
+}
+
+.syntax-text-editor:focus-visible {
+    outline: 2px solid rgba(31, 122, 140, 0.35);
+    outline-offset: 1px;
+}
+
 
 .autocomplete-option-value {
     color: #0f172a;
@@ -372,4 +497,22 @@ syntax-node {
     color: #155d6d;
     box-shadow: inset 0 0 0 1px rgba(31, 122, 140, 0.25);
     border-radius: 999px;
+}
+
+@media (max-width: 560px) {
+    .editor-mode-selector {
+        top: 3.75rem;
+    }
+
+    .editor-screen[data-mode="text"] #editor-root-container {
+        padding: 7.25rem 1rem 4.5rem;
+    }
+
+    .editor-text-controls {
+        right: 0.75rem;
+    }
+
+    .editor-text-controls > button {
+        padding: 0 0.55rem;
+    }
 }

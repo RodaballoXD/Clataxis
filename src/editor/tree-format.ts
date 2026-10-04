@@ -1,42 +1,63 @@
 import type { ReducedJSON, ReducedSyntaxBox, ReducedSyntaxNode, VeryReducedWord } from "./tree.js";
 
 export function reducedJSONToSyntaxRepr(reducedJSON: ReducedJSON, indent: number | null): { repr: string, shouldEncapsulate: boolean } {
-    if (reducedJSON.length === 0) throw new Error('reducedJSONToSyntaxRepr: reducedJSON is empty');
+    const repr = formatSequence(reducedJSON, 0);
+    return { repr, shouldEncapsulate: reducedJSON.some(isBox) };
 
-    if (reducedJSON.every((boxOrWord) => typeof boxOrWord === 'string')) {
-        return { repr: `"${reducedJSON.map((word) => escape(word as string)).join(' ')}"`, shouldEncapsulate: false };
+    function formatSequence(nodes: ReducedJSON, depth: number): string {
+        if (nodes.length === 0) throw new Error('reducedJSONToSyntaxRepr: reducedJSON is empty');
+
+        if (nodes.every(isWord)) {
+            const words = nodes as VeryReducedWord[];
+            if (words.every((word) => typeof word === 'string' || !word.com)) {
+                return `"${words.map((word) => escape(typeof word === 'string' ? word : word.cont)).join(' ')}"`;
+            }
+            return words.map(formatWord).join(' ');
+        }
+
+        const padding = ' '.repeat((indent ?? 0) * depth);
+        return nodes.map((node) => `${padding}${formatNode(node, depth)}`).join(indent === null ? '' : '\n');
     }
 
-    const spaceMaybe = (indent === null) ? '' : ' ';
+    function formatNode(node: ReducedSyntaxNode, depth: number): string {
+        if (isWord(node)) return formatWord(node);
 
-    return { repr: reducedJSON.map((boxOrWord) => {
+        const box = node as ReducedSyntaxBox;
+        const spaceMaybe = (indent === null) ? '' : ' ';
+        const comment = box.com ? `${spaceMaybe}[${escape(box.com)}]` : '';
+        const prefix = `${analysis(box)}${comment}`;
+        const contentsAreWords = box.cont.every(isWord);
+        const content = formatSequence(box.cont, depth + 1);
 
-        const isBox = Object.keys(boxOrWord).includes('fun');
-        if (isBox) {
-            const box = boxOrWord as ReducedSyntaxBox;
-            const content = reducedJSONToSyntaxRepr(box.cont, indent);
-            let contentRepr = content.repr;
-            if (content.shouldEncapsulate) {
-                contentRepr = (indent === null)
-                  ? `(${contentRepr})`
-                  : `(${ ('\n' + contentRepr).replace(/\n/g, `\n${' '.repeat(indent)}`) }\n)`;
-            }
-            return `${analysis(box)}${spaceMaybe}${(box.com) ? `[${escape(box.com)}]${spaceMaybe}` : ''}(${contentRepr})`;
-        }
-        const word = boxOrWord as VeryReducedWord;
+        if (contentsAreWords) return `${prefix}${spaceMaybe}${content}`;
+
+        const body = (indent === null)
+            ? `(${content})`
+            : `(\n${content}\n${' '.repeat(indent * depth)})`;
+        return `${prefix}${spaceMaybe}${body}`;
+    }
+
+    function formatWord(word: VeryReducedWord): string {
         if (typeof word === 'string') return `"${escape(word)}"`;
-        if (!word.com) return `"${escape(word.cont)}"`;
-        return `"${escape(word.cont)}"${spaceMaybe}[${escape(word.com)}]`;
+        const spaceMaybe = (indent === null) ? '' : ' ';
+        const comment = word.com ? `${spaceMaybe}[${escape(word.com)}]` : '';
+        return `"${escape(word.cont)}"${comment}`;
+    }
 
-        function analysis(box: ReducedSyntaxBox): string {
-            if (!box.fun && !box.cat) return '/';
-            if (!box.fun) return `${escape(box.cat!)}/`;
-            if (!box.cat) return `${escape(box.fun)}`;
-            return `${escape(box.cat)}/${escape(box.fun)}`;
-        }
+    function analysis(box: ReducedSyntaxBox): string {
+        if (!box.fun && !box.cat) return '/';
+        if (!box.fun) return `${escape(box.cat!)}/`;
+        if (!box.cat) return `${escape(box.fun)}`;
+        return `${escape(box.cat)}/${escape(box.fun)}`;
+    }
 
-    }).join(indent === null ? '' : `\n${' '.repeat(indent)}`),
-    shouldEncapsulate: (reducedJSON.length > 1 && !Object.keys(reducedJSON[0]).includes('fun')) };
+    function isWord(node: ReducedSyntaxNode): node is VeryReducedWord {
+        return typeof node === 'string' || typeof node.cont === 'string';
+    }
+
+    function isBox(node: ReducedSyntaxNode): node is ReducedSyntaxBox {
+        return typeof node !== 'string' && Array.isArray(node.cont);
+    }
 }
 
 export function syntaxReprToReducedJSON(syntaxRepr: string): ReducedJSON {

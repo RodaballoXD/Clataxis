@@ -1,12 +1,32 @@
-export function createEditorInterface(onReturnToSentenceScreen: () => void): EditorInterfaceEls {
+export function createEditorInterface(
+    onReturnToSentenceScreen: () => void,
+    onModeChange: (mode: EditorMode) => void,
+    mode: EditorMode
+): EditorInterfaceEls {
     const interfaceContainerEl = document.createElement('div');
     interfaceContainerEl.id = 'editor-container';
     interfaceContainerEl.className = 'editor-screen';
+    interfaceContainerEl.dataset.mode = mode;
 
     const homeButtonEl = createButton('Volver', 'Volver a introducir oración');
     homeButtonEl.id = 'editor-home-button';
     homeButtonEl.className = 'editor-floating-button';
     homeButtonEl.addEventListener('click', onReturnToSentenceScreen);
+
+    const modeSelectorEl = document.createElement('div');
+    modeSelectorEl.className = 'editor-mode-selector';
+    modeSelectorEl.setAttribute('role', 'group');
+    modeSelectorEl.setAttribute('aria-label', 'Modo de edición');
+
+    const treeModeButtonEl = createButton('Árbol', 'Cambiar al editor de árbol');
+    const textModeButtonEl = createButton('Texto', 'Cambiar al editor de texto');
+    treeModeButtonEl.setAttribute('aria-pressed', String(mode === 'tree'));
+    textModeButtonEl.setAttribute('aria-pressed', String(mode === 'text'));
+    treeModeButtonEl.classList.toggle('is-active', mode === 'tree');
+    textModeButtonEl.classList.toggle('is-active', mode === 'text');
+    treeModeButtonEl.addEventListener('click', () => onModeChange('tree'));
+    textModeButtonEl.addEventListener('click', () => onModeChange('text'));
+    modeSelectorEl.replaceChildren(treeModeButtonEl, textModeButtonEl);
 
     const zoomControlsEl = document.createElement('div');
     zoomControlsEl.className = 'editor-floating-panel editor-zoom-controls';
@@ -14,6 +34,12 @@ export function createEditorInterface(onReturnToSentenceScreen: () => void): Edi
     const zoomOutButtonEl = createButton('−', 'Reducir zoom');
     const zoomInButtonEl = createButton('+', 'Aumentar zoom');
     zoomControlsEl.replaceChildren(zoomOutButtonEl, zoomInButtonEl);
+
+    const textControlsEl = document.createElement('div');
+    textControlsEl.className = 'editor-floating-panel editor-text-controls';
+    const compactButtonEl = createButton('Compactar', 'Compactar el código');
+    const indentButtonEl = createButton('Indentar', 'Embellecer e indentar el código');
+    textControlsEl.replaceChildren(compactButtonEl, indentButtonEl);
 
     const rootContainerEl = document.createElement('section');
     rootContainerEl.id = 'editor-root-container';
@@ -36,7 +62,9 @@ export function createEditorInterface(onReturnToSentenceScreen: () => void): Edi
 
     interfaceContainerEl.replaceChildren(
         homeButtonEl,
+        modeSelectorEl,
         zoomControlsEl,
+        textControlsEl,
         rootContainerEl,
         historyPanelEl
     );
@@ -46,6 +74,8 @@ export function createEditorInterface(onReturnToSentenceScreen: () => void): Edi
         rootContainerEl,
         zoomInButtonEl,
         zoomOutButtonEl,
+        compactButtonEl,
+        indentButtonEl,
         undoButtonEl,
         redoButtonEl,
         notificationEl
@@ -66,7 +96,11 @@ export interface EditorInterfaceEls {
     rootContainerEl: HTMLElement;
     zoomInButtonEl: HTMLButtonElement;
     zoomOutButtonEl: HTMLButtonElement;
+    compactButtonEl: HTMLButtonElement;
+    indentButtonEl: HTMLButtonElement;
     undoButtonEl: HTMLButtonElement;
     redoButtonEl: HTMLButtonElement;
     notificationEl: HTMLDivElement;
 }
+
+export type EditorMode = 'tree' | 'text';
