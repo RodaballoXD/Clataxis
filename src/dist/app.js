@@ -93,7 +93,7 @@ export class App {
             editor.mount(editorContainerEls.rootContainerEl);
             return;
         }
-        const initialText = reducedJSONToSyntaxRepr(json, 2).repr;
+        const initialText = reducedJSONToSyntaxRepr(json, 4).repr;
         const textEditor = new TextSyntaxEditor(initialText, (nextJSON) => {
             this.currentEditorJSON = nextJSON;
             setEditorJSONInURL(nextJSON);
