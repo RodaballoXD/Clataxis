@@ -135,8 +135,18 @@ export class SyntaxEditor {
         const nextIndex = (isIn) ? Math.min(currentIndex + 1, ZOOM_STEPS.length - 1) : Math.max(currentIndex - 1, 0);
         const nextZoom = ZOOM_STEPS[nextIndex];
         this.zoom = Math.round(nextZoom * 100) / 100;
+
+        const scrollbarProgress = this.getScrollbarProgress();
         this.rootEl.style.zoom = String(this.zoom);
+        this.appEl.scrollLeft = scrollbarProgress * (this.appEl.scrollWidth - this.appEl.clientWidth);
         this.showNotification(`Zoom ${this.zoom.toFixed(2).replace(/\.0$/, '')}x`);
+    }
+
+    private getScrollbarProgress(): number {
+        const scrollLeft = this.appEl.scrollLeft;
+        const scrollWidth = this.appEl.scrollWidth - this.appEl.clientWidth;
+        if (scrollWidth <= 0) return 0.5;
+        return scrollLeft / scrollWidth;
     }
 
     private updateHistoryButtons() {
@@ -218,6 +228,17 @@ export class SyntaxEditor {
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'y') {
             event.preventDefault();
             this.redo();
+            return;
+        }
+
+        if (event.key === '+') {
+            event.preventDefault();
+            this.changeZoom(true);
+            return;
+        }
+        if (event.key === '-') {
+            event.preventDefault();
+            this.changeZoom(false);
             return;
         }
 
@@ -482,10 +503,21 @@ export class SyntaxEditor {
         if (event.key === 'ArrowUp') {
             event.preventDefault();
             this.focusEditingInput(currentIndex - 1, true);
+            return;
         }
-        else if (event.key === 'ArrowDown') {
+        if (event.key === 'ArrowDown') {
             event.preventDefault();
             this.focusEditingInput(currentIndex + 1, false);
+            return;
+        }
+
+        if (event.key === 'Tab') {
+            event.preventDefault();
+            let nextIndex = (event.shiftKey) ? currentIndex - 1 : currentIndex + 1;
+            if (nextIndex < 0) nextIndex = inputs.length - 1;
+            if (nextIndex >= inputs.length) nextIndex = 0;
+            this.focusEditingInput(nextIndex, event.shiftKey);
+            return;
         }
     }
 

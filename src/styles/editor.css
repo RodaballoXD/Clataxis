@@ -343,7 +343,7 @@ syntax-node {
 .word-node {
     padding: 0 0.8rem;
     font-size: 2.4rem;
-    min-width: 6rem;
+    min-width: 4.5rem;
     font-weight: bold;
     text-align: center;
     display: flex;

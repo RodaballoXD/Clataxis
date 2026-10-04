@@ -70,7 +70,8 @@ export class FieldAutocomplete {
         if ((event.key === 'Enter' || event.key === 'Tab')) {
             event.preventDefault();
             this.acceptActiveSuggestion();
-            return (event.key === 'Tab');
+            // return (event.key === 'Tab');
+            return false;
         }
         if (event.key === 'Escape') {
             event.preventDefault();
