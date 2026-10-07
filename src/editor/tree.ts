@@ -158,6 +158,30 @@ export class SyntaxTree {
         return parentId;
     }
 
+    getNodePath(id: number): number[] {
+        const path: number[] = [];
+        let currentId: NodeId = id;
+        while (currentId !== 'root') {
+            const node = this.getNode(currentId);
+            const parent = this.getParentNode(currentId);
+            const childIndex = parent.contents.indexOf(node as SyntaxNode | WordNode);
+            if (childIndex < 0) throw new Error(`Node ${currentId} is not in its parent's contents`);
+            path.unshift(childIndex);
+            currentId = parent.id;
+        }
+        return path;
+    }
+
+    getBoxNodeIdAtPath(path: number[]): number | null {
+        let current: RootNode | SyntaxNode = this.tree;
+        for (const childIndex of path) {
+            const child: SyntaxNode | WordNode | undefined = current.contents[childIndex];
+            if (!child || child.type !== 'box') return null;
+            current = child;
+        }
+        return current.id === 'root' ? null : current.id;
+    }
+
     getParentNode(id: number): SyntaxNode | RootNode {
         const node = this.getNode(this.getParentId(id)!) as SyntaxNode | RootNode;
         if (!node) {

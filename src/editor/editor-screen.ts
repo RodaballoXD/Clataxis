@@ -20,13 +20,17 @@ export function createEditorInterface(
 
     const treeModeButtonEl = createButton('Árbol', 'Cambiar al editor de árbol');
     const textModeButtonEl = createButton('Texto', 'Cambiar al editor de texto');
+    const guidedModeButtonEl = createButton('Guiado', 'Cambiar al modo guiado');
     treeModeButtonEl.setAttribute('aria-pressed', String(mode === 'tree'));
     textModeButtonEl.setAttribute('aria-pressed', String(mode === 'text'));
+    guidedModeButtonEl.setAttribute('aria-pressed', String(mode === 'guided'));
     treeModeButtonEl.classList.toggle('is-active', mode === 'tree');
     textModeButtonEl.classList.toggle('is-active', mode === 'text');
+    guidedModeButtonEl.classList.toggle('is-active', mode === 'guided');
     treeModeButtonEl.addEventListener('click', () => onModeChange('tree'));
     textModeButtonEl.addEventListener('click', () => onModeChange('text'));
-    modeSelectorEl.replaceChildren(treeModeButtonEl, textModeButtonEl);
+    guidedModeButtonEl.addEventListener('click', () => onModeChange('guided'));
+    modeSelectorEl.replaceChildren(treeModeButtonEl, textModeButtonEl, guidedModeButtonEl);
 
     const zoomControlsEl = document.createElement('div');
     zoomControlsEl.className = 'editor-floating-panel editor-zoom-controls';
@@ -43,6 +47,11 @@ export function createEditorInterface(
 
     const rootContainerEl = document.createElement('section');
     rootContainerEl.id = 'editor-root-container';
+
+    const guidedPanelEl = document.createElement('section');
+    guidedPanelEl.className = 'guided-panel';
+    guidedPanelEl.setAttribute('aria-live', 'polite');
+    guidedPanelEl.setAttribute('aria-label', 'Análisis guiado');
 
     const historyPanelEl = document.createElement('div');
     historyPanelEl.className = 'editor-history-panel';
@@ -65,6 +74,7 @@ export function createEditorInterface(
         modeSelectorEl,
         zoomControlsEl,
         textControlsEl,
+        guidedPanelEl,
         rootContainerEl,
         historyPanelEl
     );
@@ -72,6 +82,7 @@ export function createEditorInterface(
     return {
         interfaceContainerEl,
         rootContainerEl,
+        guidedPanelEl,
         zoomInButtonEl,
         zoomOutButtonEl,
         compactButtonEl,
@@ -94,6 +105,7 @@ function createButton(text: string, label: string): HTMLButtonElement {
 export interface EditorInterfaceEls {
     interfaceContainerEl: HTMLDivElement;
     rootContainerEl: HTMLElement;
+    guidedPanelEl: HTMLElement;
     zoomInButtonEl: HTMLButtonElement;
     zoomOutButtonEl: HTMLButtonElement;
     compactButtonEl: HTMLButtonElement;
@@ -103,4 +115,4 @@ export interface EditorInterfaceEls {
     notificationEl: HTMLDivElement;
 }
 
-export type EditorMode = 'tree' | 'text';
+export type EditorMode = 'tree' | 'text' | 'guided';

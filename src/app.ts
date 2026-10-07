@@ -1,5 +1,7 @@
 import { createEditorInterface } from "./editor/editor-screen.js";
 import { SyntaxEditor } from "./editor/editor.js";
+import { createGuidedEditorState } from "./editor/guided-state.js";
+import type { GuidedEditorState } from "./editor/guided-state.js";
 import type { ReducedJSON } from "./editor/tree.js";
 import { sentenceToReducedJSON } from "./editor/tree.js";
 import { reducedJSONToSyntaxRepr } from "./editor/tree-format.js";
@@ -16,6 +18,7 @@ export class App {
     private editorMode: EditorMode = 'tree';
     private undoStack: ReducedJSON[] = [];
     private redoStack: ReducedJSON[] = [];
+    private guidedState: GuidedEditorState = createGuidedEditorState();
 
     constructor(appEl: HTMLDivElement) {
         this.appEl = appEl;
@@ -38,6 +41,7 @@ export class App {
         this.activeTextEditor = null;
         this.undoStack = [];
         this.redoStack = [];
+        this.guidedState = createGuidedEditorState();
 
         this.appEl.replaceChildren();
         if (screen === 'sentence') {
@@ -111,10 +115,10 @@ export class App {
             setEditorJSONInURL(json, urlMode);
         }
 
-        if (mode === 'tree') {
+        if (mode !== 'text') {
             const editor = new SyntaxEditor(json, (nextJSON) => {
                 this.recordAnalysisChange(nextJSON);
-            }, editorContainerEls);
+            }, editorContainerEls, mode === 'guided' ? this.guidedState : null);
             this.activeEditor = editor;
             editor.mount(editorContainerEls.rootContainerEl);
             return;
@@ -135,6 +139,9 @@ export class App {
     private recordAnalysisChange(nextJSON: ReducedJSON) {
         if (!this.currentEditorJSON || sameReducedJSON(this.currentEditorJSON, nextJSON)) return;
 
+        if (this.editorMode !== 'guided') {
+            this.guidedState = createGuidedEditorState();
+        }
         this.undoStack.push(cloneReducedJSON(this.currentEditorJSON));
         this.redoStack = [];
         this.currentEditorJSON = cloneReducedJSON(nextJSON);
@@ -146,6 +153,9 @@ export class App {
         const previous = this.undoStack.pop();
         if (!previous || !this.currentEditorJSON) return;
 
+        if (this.editorMode !== 'guided') {
+            this.guidedState = createGuidedEditorState();
+        }
         this.redoStack.push(cloneReducedJSON(this.currentEditorJSON));
         this.currentEditorJSON = previous;
         setEditorJSONInURL(previous);
@@ -156,6 +166,9 @@ export class App {
         const next = this.redoStack.pop();
         if (!next || !this.currentEditorJSON) return;
 
+        if (this.editorMode !== 'guided') {
+            this.guidedState = createGuidedEditorState();
+        }
         this.undoStack.push(cloneReducedJSON(this.currentEditorJSON));
         this.currentEditorJSON = next;
         setEditorJSONInURL(next);
@@ -167,14 +180,19 @@ export class App {
         redoButtonEl ??= this.appEl.querySelector<HTMLButtonElement>('.editor-history-controls button:last-child') ?? undefined;
         if (!undoButtonEl || !redoButtonEl) return;
 
-        undoButtonEl.disabled = this.undoStack.length === 0;
-        redoButtonEl.disabled = this.redoStack.length === 0;
+        const historyDisabled = this.editorMode === 'guided';
+        undoButtonEl.disabled = historyDisabled || this.undoStack.length === 0;
+        redoButtonEl.disabled = historyDisabled || this.redoStack.length === 0;
     }
 
     private onKeyDown = (event: KeyboardEvent) => {
         if (!(event.ctrlKey || event.metaKey)) return;
-        if (this.editorMode === 'tree') {
+        if (this.editorMode !== 'text') {
             if (!this.activeEditor || this.activeEditor.state.editing.isEditing) return;
+            if (this.editorMode === 'guided') {
+                event.preventDefault();
+                return;
+            }
         } else if (event.target instanceof HTMLTextAreaElement) {
             return;
         }
@@ -193,7 +211,7 @@ export class App {
 
 type Screen = 'sentence' | 'editor';
 type URLMode = 'none' | 'push' | 'replace';
-type EditorMode = 'tree' | 'text';
+type EditorMode = 'tree' | 'text' | 'guided';
 
 function cloneReducedJSON(json: ReducedJSON): ReducedJSON {
     return JSON.parse(JSON.stringify(json)) as ReducedJSON;

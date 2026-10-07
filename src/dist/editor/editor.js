@@ -1,8 +1,9 @@
 import { SyntaxTree } from "./tree.js";
 import { FieldAutocomplete } from "./autocomplete.js";
+import { GRAMMAR } from "../grammar/placeholder-grammar.js";
 const ZOOM_STEPS = [0.25, 0.3, 0.4, 0.5, 0.6, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4];
 export class SyntaxEditor {
-    constructor(json, onChange = () => { }, controls) {
+    constructor(json, onChange = () => { }, controls, guidedState = null) {
         this.zoom = 1;
         this.notificationTimeout = null;
         this.autocomplete = new FieldAutocomplete();
@@ -26,6 +27,42 @@ export class SyntaxEditor {
                 didMove: false,
                 startMousePosition: null
             }
+        };
+        this.onGuidedPanelClick = (event) => {
+            if (!this.guidedState || !(event.target instanceof Element))
+                return;
+            const button = event.target.closest('button[data-guided-action]');
+            if (!button || button.disabled)
+                return;
+            const action = button.dataset.guidedAction;
+            if (action === 'choose-none') {
+                this.guidedState = { stage: 'steps', targetNodePath: null, syntagmaType: null, stepIndex: 0 };
+                this.selectNode(null);
+            }
+            else if (action === 'next') {
+                this.goToNextGuidedStep();
+            }
+            else if (action === 'previous') {
+                this.goToPreviousGuidedStep();
+            }
+            else if (action === 'choose-type' && button.dataset.syntagmaType) {
+                this.guidedState = {
+                    stage: 'steps',
+                    targetNodePath: this.guidedState.stage === 'choose-type' ? this.guidedState.targetNodePath : null,
+                    syntagmaType: button.dataset.syntagmaType,
+                    stepIndex: 0
+                };
+            }
+            this.renderTree();
+        };
+        this.onButtonClick = (event) => {
+            if (!this.state.editing.isEditing || !(event.target instanceof Element))
+                return;
+            const button = event.target.closest('button');
+            if (!button)
+                return;
+            const shouldRender = !this.rootEl.contains(button) && !this.controls.guidedPanelEl.contains(button);
+            this.finishEditing(shouldRender);
         };
         this.onPointerCancel = (event) => {
             if (!this.state.pointer.isDragging)
@@ -89,6 +126,17 @@ export class SyntaxEditor {
         this.onPointerDown = (event) => {
             const clicked = this.getClickedNode(event);
             if (clicked.didClickInput)
+                return;
+            if (this.guidedState?.stage === 'choose-target') {
+                if (clicked.type === 'syntax') {
+                    const candidateNodeId = clicked.nodeEl.nodeId;
+                    this.guidedState = { stage: 'choose-target', candidateNodePath: this.tree.getNodePath(candidateNodeId) };
+                    this.selectNode(candidateNodeId);
+                    this.renderGuidedPanel();
+                }
+                return;
+            }
+            if (clicked.nodeEl && !this.canInteractWithNode(clicked.nodeEl.nodeId))
                 return;
             if (clicked.type === 'word') {
                 const wordToken = this.tree.getNode(clicked.nodeEl.nodeId).token;
@@ -163,30 +211,38 @@ export class SyntaxEditor {
         this.selectionActionsEl = this.createSelectionActions();
         this.onChange = onChange;
         this.controls = controls;
+        this.guidedState = guidedState;
+        this.validateGuidedState();
     }
     mount(container) {
         container.appendChild(this.rootEl);
         this.renderTree();
         this.installListeners();
         this.installControlListeners();
+        this.renderGuidedPanel();
     }
     destroy() {
         this.appEl.removeEventListener('pointerdown', this.onPointerDown);
         this.appEl.removeEventListener('pointermove', this.onPointerMove);
         this.appEl.removeEventListener('pointerup', this.onPointerUp);
         this.appEl.removeEventListener('pointercancel', this.onPointerCancel);
+        this.appEl.removeEventListener('click', this.onButtonClick, true);
         document.removeEventListener('keydown', this.onKeyDown, true);
+        this.controls.guidedPanelEl.removeEventListener('click', this.onGuidedPanelClick);
         this.autocomplete.destroy();
         if (this.notificationTimeout !== null) {
             window.clearTimeout(this.notificationTimeout);
         }
     }
     renderTree() {
+        this.validateGuidedState();
         const json = this.tree.getJSON();
         this.elementMapping = this.rootEl.build(json);
         if (this.state.selectedNodeId !== null) {
             this.selectNode(this.state.selectedNodeId);
         }
+        this.updateGuidedFocus();
+        this.renderGuidedPanel();
     }
     notifyChange() {
         this.onChange(this.tree.toReducedJSON());
@@ -203,6 +259,182 @@ export class SyntaxEditor {
     installControlListeners() {
         this.controls.zoomInButtonEl.addEventListener('click', () => this.changeZoom(true));
         this.controls.zoomOutButtonEl.addEventListener('click', () => this.changeZoom(false));
+        this.controls.guidedPanelEl.addEventListener('click', this.onGuidedPanelClick);
+    }
+    goToNextGuidedStep() {
+        if (!this.guidedState)
+            return;
+        if (this.guidedState.stage === 'choose-target') {
+            if (this.guidedState.candidateNodePath === null)
+                return;
+            this.guidedState = { stage: 'choose-type', targetNodePath: this.guidedState.candidateNodePath };
+            return;
+        }
+        if (this.guidedState.stage !== 'steps')
+            return;
+        const steps = this.getCurrentGuidedSteps();
+        if (this.guidedState.stepIndex < steps.length - 1) {
+            this.guidedState.stepIndex++;
+        }
+        else {
+            this.guidedState = { stage: 'choose-target', candidateNodePath: null };
+            this.selectNode(null);
+        }
+    }
+    goToPreviousGuidedStep() {
+        if (!this.guidedState)
+            return;
+        if (this.guidedState.stage === 'choose-type') {
+            const targetNodeId = this.getGuidedTargetNodeId();
+            this.guidedState = { stage: 'choose-target', candidateNodePath: this.guidedState.targetNodePath };
+            this.selectNode(targetNodeId);
+            return;
+        }
+        if (this.guidedState.stage !== 'steps')
+            return;
+        if (this.guidedState.stepIndex > 0) {
+            this.guidedState.stepIndex--;
+        }
+        else if (this.guidedState.targetNodePath === null) {
+            this.guidedState = { stage: 'choose-target', candidateNodePath: null };
+            this.selectNode(null);
+        }
+        else {
+            const targetNodeId = this.getGuidedTargetNodeId();
+            this.guidedState = { stage: 'choose-type', targetNodePath: this.guidedState.targetNodePath };
+            this.selectNode(targetNodeId);
+        }
+    }
+    getCurrentGuidedSteps() {
+        if (!this.guidedState || this.guidedState.stage !== 'steps')
+            return [];
+        if (this.guidedState.syntagmaType === null)
+            return GRAMMAR.sentenceSteps;
+        return this.getGuidedSyntagma(this.guidedState.syntagmaType)?.steps ?? [];
+    }
+    getGuidedSyntagma(value) {
+        return GRAMMAR.guidedSyntagmas.find((syntagma) => syntagma.value === value);
+    }
+    renderGuidedPanel() {
+        const panel = this.controls.guidedPanelEl;
+        panel.replaceChildren();
+        panel.hidden = !this.guidedState;
+        if (!this.guidedState)
+            return;
+        if (this.guidedState.stage === 'choose-target') {
+            this.addGuidedText(panel, 'h2', 'Elige qué analizar');
+            this.addGuidedText(panel, 'p', 'Haz clic en una caja del árbol y pulsa Siguiente, o elige analizar la oración completa.');
+            const candidateNodeId = this.getGuidedTargetNodeId();
+            if (candidateNodeId !== null) {
+                this.addGuidedText(panel, 'p', this.getNodeLabel(candidateNodeId));
+            }
+            const actions = this.createGuidedActions();
+            actions.append(this.createGuidedButton('Anterior', 'previous', true), this.createGuidedButton('Oración completa', 'choose-none'), this.createGuidedButton('Siguiente', 'next', candidateNodeId === null));
+            panel.appendChild(actions);
+            return;
+        }
+        if (this.guidedState.stage === 'choose-type') {
+            this.addGuidedText(panel, 'h2', '¿Qué tipo de sintagma es?');
+            const targetNodeId = this.getGuidedTargetNodeId();
+            if (targetNodeId !== null)
+                this.addGuidedText(panel, 'p', this.getNodeLabel(targetNodeId));
+            const types = document.createElement('div');
+            types.className = 'guided-type-options';
+            for (const syntagma of GRAMMAR.guidedSyntagmas) {
+                const button = this.createGuidedButton(`${syntagma.value} · ${syntagma.fullName}`, 'choose-type');
+                button.dataset.syntagmaType = syntagma.value;
+                types.appendChild(button);
+            }
+            panel.appendChild(types);
+            const actions = this.createGuidedActions();
+            actions.appendChild(this.createGuidedButton('Anterior', 'previous'));
+            panel.appendChild(actions);
+            return;
+        }
+        const steps = this.getCurrentGuidedSteps();
+        const currentStep = steps[this.guidedState.stepIndex];
+        const title = this.guidedState.syntagmaType
+            ? `Análisis de ${this.guidedState.syntagmaType}`
+            : 'Análisis de oración simple';
+        this.addGuidedText(panel, 'h2', title);
+        this.addGuidedText(panel, 'p', `Paso ${this.guidedState.stepIndex + 1} de ${steps.length}`);
+        this.addGuidedText(panel, 'p', currentStep?.description ?? 'No hay pasos definidos.');
+        const actions = this.createGuidedActions();
+        actions.append(this.createGuidedButton('Anterior', 'previous'), this.createGuidedButton('Siguiente', 'next'));
+        panel.appendChild(actions);
+    }
+    createGuidedActions() {
+        const actions = document.createElement('div');
+        actions.className = 'guided-actions';
+        return actions;
+    }
+    createGuidedButton(text, action, disabled = false) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = text;
+        button.dataset.guidedAction = action;
+        button.disabled = disabled;
+        return button;
+    }
+    addGuidedText(parent, tag, text) {
+        const element = document.createElement(tag);
+        element.textContent = text;
+        parent.appendChild(element);
+    }
+    getNodeLabel(id) {
+        const node = this.tree.getNode(id);
+        const words = this.tree.getWordsFromTokenRange(node.startToken, node.endToken).map((word) => word.word);
+        return words.join(' ');
+    }
+    validateGuidedState() {
+        if (!this.guidedState)
+            return;
+        const nodePath = this.guidedState.stage === 'choose-target'
+            ? this.guidedState.candidateNodePath
+            : this.guidedState.targetNodePath;
+        if (nodePath === null || this.tree.getBoxNodeIdAtPath(nodePath) !== null)
+            return;
+        this.guidedState = { stage: 'choose-target', candidateNodePath: null };
+    }
+    getGuidedTargetNodeId() {
+        if (!this.guidedState || this.guidedState.stage === 'steps' && this.guidedState.targetNodePath === null)
+            return null;
+        const nodePath = this.guidedState.stage === 'choose-target'
+            ? this.guidedState.candidateNodePath
+            : this.guidedState.targetNodePath;
+        return nodePath === null ? null : this.tree.getBoxNodeIdAtPath(nodePath);
+    }
+    updateGuidedFocus() {
+        if (!this.guidedState)
+            return;
+        const targetNodeId = this.guidedState.stage === 'choose-target' ? null : this.getGuidedTargetNodeId();
+        for (const [nodeId, element] of this.elementMapping) {
+            const inScope = targetNodeId === null || this.isWithinScope(nodeId, targetNodeId);
+            element.classList.toggle('guided-outside', !inScope);
+            element.classList.toggle('guided-focus', nodeId === targetNodeId);
+        }
+    }
+    isWithinScope(nodeId, scopeId) {
+        let currentId = nodeId;
+        while (currentId !== 'root') {
+            if (currentId === scopeId)
+                return true;
+            currentId = this.tree.getParentId(currentId);
+        }
+        return false;
+    }
+    canInteractWithNode(nodeId) {
+        if (!this.guidedState)
+            return true;
+        if (this.guidedState.stage === 'choose-target')
+            return false;
+        const targetId = this.getGuidedTargetNodeId();
+        return targetId === null || this.isWithinScope(nodeId, targetId);
+    }
+    isTargetNode(nodeId) {
+        return !!this.guidedState
+            && this.guidedState.stage !== 'choose-target'
+            && this.getGuidedTargetNodeId() === nodeId;
     }
     changeZoom(isIn) {
         const currentIndex = ZOOM_STEPS.indexOf(this.zoom);
@@ -226,6 +458,7 @@ export class SyntaxEditor {
         this.appEl.addEventListener('pointermove', this.onPointerMove);
         this.appEl.addEventListener('pointerup', this.onPointerUp);
         this.appEl.addEventListener('pointercancel', this.onPointerCancel);
+        this.appEl.addEventListener('click', this.onButtonClick, true);
         document.addEventListener('keydown', this.onKeyDown, true);
     }
     createSelectionActions() {
@@ -294,6 +527,8 @@ export class SyntaxEditor {
             const wordContEl = underPointer.closest('.word-node');
             const wordEl = underPointer.closest('word-node');
             if (wordEl && wordContEl) {
+                if (!this.canInteractWithNode(wordEl.nodeId))
+                    return;
                 endWordToken = this.tree.getNode(wordEl.nodeId).token;
             }
         }
@@ -353,6 +588,10 @@ export class SyntaxEditor {
     updateSelectionPanel() {
         const id = this.state.selectedNodeId;
         if (id === null) {
+            this.selectionActionsEl.remove();
+            return;
+        }
+        if (this.guidedState?.stage === 'choose-target' || this.isTargetNode(id)) {
             this.selectionActionsEl.remove();
             return;
         }
@@ -440,6 +679,8 @@ export class SyntaxEditor {
         const id = this.state.selectedNodeId;
         if (id === null)
             throw new Error("Cannot edit unselected node");
+        if (!this.canInteractWithNode(id))
+            return;
         const element = this.elementMapping.get(id);
         this.state.editing = {
             isEditing: true,
@@ -480,13 +721,22 @@ export class SyntaxEditor {
             return foundClassName;
         }
     }
-    finishEditing() {
+    finishEditing(shouldRender = true) {
         const id = this.state.selectedNodeId;
         if (id === null)
             throw new Error("Cannot edit unselected node");
         const element = this.elementMapping.get(id);
         const node = this.tree.getNode(id);
         const previousJSON = this.snapshot();
+        if (element.type === 'word'
+            && this.wouldRemoveGuidedBoundaryWord(id, this.state.editing.elements?.word?.value ?? '')) {
+            this.resetEditingState();
+            element.finishEdit();
+            if (shouldRender)
+                this.renderTree();
+            this.showNotification('No se puede vaciar la última palabra del sintagma');
+            return;
+        }
         this.resetEditingState();
         const analysis = element.finishEdit();
         if (element.type === 'word') {
@@ -498,7 +748,8 @@ export class SyntaxEditor {
         else {
             this.tree.setNodeAnalysis(node.id, analysis);
         }
-        this.renderTree();
+        if (shouldRender)
+            this.renderTree();
         this.registerTreeChange(previousJSON);
         this.showNotification('Caja editada');
     }
@@ -523,6 +774,10 @@ export class SyntaxEditor {
         const id = this.state.selectedNodeId;
         if (id === null)
             return;
+        if (this.guidedState?.stage === 'choose-target' || this.isTargetNode(id))
+            return;
+        if (!this.canInteractWithNode(id))
+            return;
         const selected = this.tree.getNode(id);
         if (selected.type === 'word')
             return;
@@ -544,6 +799,14 @@ export class SyntaxEditor {
         if (startToken > endToken) {
             [endToken, startToken] = [startToken, endToken];
         }
+        if (this.guidedState?.stage === 'choose-target')
+            return;
+        const guidedTargetNodeId = this.getGuidedTargetNodeId();
+        if (this.guidedState && guidedTargetNodeId !== null) {
+            const words = this.tree.getWordsFromTokenRange(startToken, endToken);
+            if (words.length === 0 || words.some((word) => !this.canInteractWithNode(word.id)))
+                return;
+        }
         const previousJSON = this.snapshot();
         const insertedData = this.tree.insertBoxAtRange(startToken, endToken);
         if (insertedData.status === 'error') {
@@ -555,6 +818,16 @@ export class SyntaxEditor {
         this.startEditing();
         this.registerTreeChange(previousJSON);
         this.showNotification('Caja creada');
+    }
+    wouldRemoveGuidedBoundaryWord(nodeId, proposedWord) {
+        if (!this.guidedState || this.guidedState.stage === 'choose-target'
+            || this.getGuidedTargetNodeId() === null || proposedWord.trim())
+            return false;
+        if (!this.canInteractWithNode(nodeId))
+            return false;
+        const target = this.tree.getNode(this.getGuidedTargetNodeId());
+        const words = this.tree.getWordsFromTokenRange(target.startToken, target.endToken);
+        return words.length === 1 && words[0].id === nodeId;
     }
     startAutoScroll() {
         if (this.autoScrollAnimationFrame !== null)

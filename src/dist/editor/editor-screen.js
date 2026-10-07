@@ -13,13 +13,17 @@ export function createEditorInterface(onReturnToSentenceScreen, onModeChange, mo
     modeSelectorEl.setAttribute('aria-label', 'Modo de edición');
     const treeModeButtonEl = createButton('Árbol', 'Cambiar al editor de árbol');
     const textModeButtonEl = createButton('Texto', 'Cambiar al editor de texto');
+    const guidedModeButtonEl = createButton('Guiado', 'Cambiar al modo guiado');
     treeModeButtonEl.setAttribute('aria-pressed', String(mode === 'tree'));
     textModeButtonEl.setAttribute('aria-pressed', String(mode === 'text'));
+    guidedModeButtonEl.setAttribute('aria-pressed', String(mode === 'guided'));
     treeModeButtonEl.classList.toggle('is-active', mode === 'tree');
     textModeButtonEl.classList.toggle('is-active', mode === 'text');
+    guidedModeButtonEl.classList.toggle('is-active', mode === 'guided');
     treeModeButtonEl.addEventListener('click', () => onModeChange('tree'));
     textModeButtonEl.addEventListener('click', () => onModeChange('text'));
-    modeSelectorEl.replaceChildren(treeModeButtonEl, textModeButtonEl);
+    guidedModeButtonEl.addEventListener('click', () => onModeChange('guided'));
+    modeSelectorEl.replaceChildren(treeModeButtonEl, textModeButtonEl, guidedModeButtonEl);
     const zoomControlsEl = document.createElement('div');
     zoomControlsEl.className = 'editor-floating-panel editor-zoom-controls';
     const zoomOutButtonEl = createButton('−', 'Reducir zoom');
@@ -32,6 +36,10 @@ export function createEditorInterface(onReturnToSentenceScreen, onModeChange, mo
     textControlsEl.replaceChildren(compactButtonEl, indentButtonEl);
     const rootContainerEl = document.createElement('section');
     rootContainerEl.id = 'editor-root-container';
+    const guidedPanelEl = document.createElement('section');
+    guidedPanelEl.className = 'guided-panel';
+    guidedPanelEl.setAttribute('aria-live', 'polite');
+    guidedPanelEl.setAttribute('aria-label', 'Análisis guiado');
     const historyPanelEl = document.createElement('div');
     historyPanelEl.className = 'editor-history-panel';
     const notificationEl = document.createElement('div');
@@ -44,10 +52,11 @@ export function createEditorInterface(onReturnToSentenceScreen, onModeChange, mo
     const redoButtonEl = createButton('↷', 'Rehacer (Ctrl+y)');
     historyControlsEl.replaceChildren(undoButtonEl, redoButtonEl);
     historyPanelEl.replaceChildren(notificationEl, historyControlsEl);
-    interfaceContainerEl.replaceChildren(homeButtonEl, modeSelectorEl, zoomControlsEl, textControlsEl, rootContainerEl, historyPanelEl);
+    interfaceContainerEl.replaceChildren(homeButtonEl, modeSelectorEl, zoomControlsEl, textControlsEl, guidedPanelEl, rootContainerEl, historyPanelEl);
     return {
         interfaceContainerEl,
         rootContainerEl,
+        guidedPanelEl,
         zoomInButtonEl,
         zoomOutButtonEl,
         compactButtonEl,

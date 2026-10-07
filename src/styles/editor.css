@@ -230,6 +230,101 @@ root-node {
     background: #ffffff;
 }
 
+.guided-panel[hidden] {
+    display: none;
+}
+
+.editor-screen[data-mode="guided"] #editor-root-container {
+    padding-top: 7.5rem;
+}
+
+.guided-panel {
+    position: fixed;
+    left: 50%;
+    bottom: 4.5rem;
+    z-index: 9;
+    width: min(34rem, calc(100vw - 2rem));
+    box-sizing: border-box;
+    padding: 0.85rem 1rem;
+    border: 1px solid #cbd4dd;
+    border-radius: 0.5rem;
+    color: #202a34;
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 0.3rem 1rem rgba(29, 36, 48, 0.14);
+    transform: translateX(-50%);
+}
+
+.guided-panel h2,
+.guided-panel p {
+    margin: 0;
+}
+
+.guided-panel h2 {
+    margin-bottom: 0.35rem;
+    font-size: 1rem;
+}
+
+.guided-panel p {
+    color: #52606d;
+    font-size: 0.9rem;
+    line-height: 1.35;
+}
+
+.guided-actions,
+.guided-type-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.guided-type-options {
+    margin-top: 0.65rem;
+}
+
+.guided-panel button {
+    min-height: 2.2rem;
+    border: 1px solid #d7dfe8;
+    border-radius: 0.4rem;
+    padding: 0.4rem 0.7rem;
+    color: #1d2430;
+    background: #ffffff;
+    font: inherit;
+    font-size: 0.86rem;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.guided-panel button:hover:not(:disabled) {
+    border-color: #1f7a8c;
+    background: #eff7f8;
+}
+
+.guided-panel button:focus-visible {
+    outline: 2px solid rgba(31, 122, 140, 0.3);
+    outline-offset: 2px;
+}
+
+.guided-panel button:disabled {
+    color: #9aa3ae;
+    cursor: default;
+}
+
+syntax-node.guided-outside > .syntax-node > .line,
+syntax-node.guided-outside > .syntax-node > .analysis,
+word-node.guided-outside > .word-node {
+    opacity: 0.12;
+}
+
+syntax-node.guided-focus > .syntax-node > .line {
+    border-color: #1f7a8c;
+    box-shadow: 0 0 0 3px rgba(31, 122, 140, 0.18);
+}
+
+syntax-node.guided-focus > .syntax-node > .analysis {
+    color: #155d6d;
+}
+
 
 .autocomplete-details {
     display: flex;
@@ -506,5 +601,14 @@ syntax-node:hover:not(.selected):not(:has(.children syntax-node:hover, .children
 
     .editor-text-controls > button {
         padding: 0 0.55rem;
+    }
+
+    .guided-panel {
+        bottom: 4.25rem;
+        padding: 0.75rem;
+    }
+
+    .editor-screen[data-mode="guided"] #editor-root-container {
+        padding: 8rem 1rem 4.5rem;
     }
 }
