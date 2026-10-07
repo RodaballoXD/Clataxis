@@ -346,7 +346,7 @@ syntax-node {
     padding: 0 0.6rem 0.6rem;
 }
 
-word-node:not(.selected):hover > .word-node:not(.editing) > .word {
+word-node:not(.selected) > .word-node:not(.editing):hover > .word {
     background: rgba(31, 122, 140, 0.04);
     border-radius: 999px;
     box-shadow: inset 0 0 0 1px rgba(31, 122, 140, 0.1);

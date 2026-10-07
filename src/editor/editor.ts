@@ -206,6 +206,13 @@ export class SyntaxEditor {
             }
             return;
         }
+
+        if (event.key === 'Escape' && this.state.pointer.isDragging) {
+            this.clearPointerState();
+            this.clearDragHighlight();
+            this.stopAutoScroll();
+            return;
+        }
     };
 
     private onPointerDown = (event: PointerEvent) => {

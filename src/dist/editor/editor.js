@@ -79,6 +79,12 @@ export class SyntaxEditor {
                 }
                 return;
             }
+            if (event.key === 'Escape' && this.state.pointer.isDragging) {
+                this.clearPointerState();
+                this.clearDragHighlight();
+                this.stopAutoScroll();
+                return;
+            }
         };
         this.onPointerDown = (event) => {
             const clicked = this.getClickedNode(event);
