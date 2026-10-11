@@ -1,6 +1,6 @@
 import { createEditorInterface } from "./editor/editor-screen.js";
 import { SyntaxEditor } from "./editor/editor.js";
-import { createGuidedEditorState } from "./editor/guided-state.js";
+import { GuidedSyntaxEditor } from "./editor/guided-editor.js";
 import { sentenceToReducedJSON } from "./editor/tree.js";
 import { reducedJSONToSyntaxRepr } from "./editor/tree-format.js";
 import { TextSyntaxEditor } from "./editor/text-editor.js";
@@ -15,7 +15,6 @@ export class App {
         this.editorMode = 'tree';
         this.undoStack = [];
         this.redoStack = [];
-        this.guidedState = createGuidedEditorState();
         this.onBrowserNavigation = () => {
             const editorJSON = getEditorJSONFromURL();
             if (editorJSON) {
@@ -29,9 +28,6 @@ export class App {
             const previous = this.undoStack.pop();
             if (!previous || !this.currentEditorJSON)
                 return;
-            if (this.editorMode !== 'guided') {
-                this.guidedState = createGuidedEditorState();
-            }
             this.redoStack.push(cloneReducedJSON(this.currentEditorJSON));
             this.currentEditorJSON = previous;
             setEditorJSONInURL(previous);
@@ -41,9 +37,6 @@ export class App {
             const next = this.redoStack.pop();
             if (!next || !this.currentEditorJSON)
                 return;
-            if (this.editorMode !== 'guided') {
-                this.guidedState = createGuidedEditorState();
-            }
             this.undoStack.push(cloneReducedJSON(this.currentEditorJSON));
             this.currentEditorJSON = next;
             setEditorJSONInURL(next);
@@ -55,7 +48,7 @@ export class App {
             if (this.editorMode !== 'text') {
                 if (!this.activeEditor || this.activeEditor.state.editing.isEditing)
                     return;
-                if (this.editorMode === 'guided') {
+                if (!this.activeEditor.supportsHistory) {
                     event.preventDefault();
                     return;
                 }
@@ -95,7 +88,6 @@ export class App {
         this.activeTextEditor = null;
         this.undoStack = [];
         this.redoStack = [];
-        this.guidedState = createGuidedEditorState();
         this.appEl.replaceChildren();
         if (screen === 'sentence') {
             this.currentEditorJSON = null;
@@ -144,7 +136,7 @@ export class App {
         const onReturnToSentenceScreen = () => {
             this.setScreen('sentence', undefined, 'push');
         };
-        const editorContainerEls = createEditorInterface(onReturnToSentenceScreen, (nextMode) => this.switchEditorMode(nextMode), mode);
+        const editorContainerEls = createEditorInterface(onReturnToSentenceScreen, (nextMode) => this.switchEditorMode(nextMode), mode, () => this.activeEditor?.commitPendingEdit());
         editorContainerEls.undoButtonEl.addEventListener('click', this.undo);
         editorContainerEls.redoButtonEl.addEventListener('click', this.redo);
         this.appEl.appendChild(editorContainerEls.interfaceContainerEl);
@@ -153,9 +145,10 @@ export class App {
             setEditorJSONInURL(json, urlMode);
         }
         if (mode !== 'text') {
-            const editor = new SyntaxEditor(json, (nextJSON) => {
-                this.recordAnalysisChange(nextJSON);
-            }, editorContainerEls, mode === 'guided' ? this.guidedState : null);
+            const onChange = (nextJSON) => this.recordAnalysisChange(nextJSON);
+            const editor = mode === 'guided'
+                ? new GuidedSyntaxEditor(json, onChange, editorContainerEls)
+                : new SyntaxEditor(json, onChange, editorContainerEls);
             this.activeEditor = editor;
             editor.mount(editorContainerEls.rootContainerEl);
             return;
@@ -170,9 +163,6 @@ export class App {
     recordAnalysisChange(nextJSON) {
         if (!this.currentEditorJSON || sameReducedJSON(this.currentEditorJSON, nextJSON))
             return;
-        if (this.editorMode !== 'guided') {
-            this.guidedState = createGuidedEditorState();
-        }
         this.undoStack.push(cloneReducedJSON(this.currentEditorJSON));
         this.redoStack = [];
         this.currentEditorJSON = cloneReducedJSON(nextJSON);
@@ -184,7 +174,9 @@ export class App {
         redoButtonEl ?? (redoButtonEl = this.appEl.querySelector('.editor-history-controls button:last-child') ?? undefined);
         if (!undoButtonEl || !redoButtonEl)
             return;
-        const historyDisabled = this.editorMode === 'guided';
+        const historyDisabled = this.editorMode !== 'text'
+            && this.activeEditor !== null
+            && !this.activeEditor.supportsHistory;
         undoButtonEl.disabled = historyDisabled || this.undoStack.length === 0;
         redoButtonEl.disabled = historyDisabled || this.redoStack.length === 0;
     }

@@ -1,4 +1,4 @@
-export function createEditorInterface(onReturnToSentenceScreen, onModeChange, mode) {
+export function createEditorInterface(onReturnToSentenceScreen, onModeChange, mode, onBeforeAction) {
     const interfaceContainerEl = document.createElement('div');
     interfaceContainerEl.id = 'editor-container';
     interfaceContainerEl.className = 'editor-screen';
@@ -6,7 +6,10 @@ export function createEditorInterface(onReturnToSentenceScreen, onModeChange, mo
     const homeButtonEl = createButton('Volver', 'Volver a introducir oración');
     homeButtonEl.id = 'editor-home-button';
     homeButtonEl.className = 'editor-floating-button';
-    homeButtonEl.addEventListener('click', onReturnToSentenceScreen);
+    homeButtonEl.addEventListener('click', () => {
+        onBeforeAction();
+        onReturnToSentenceScreen();
+    });
     const modeSelectorEl = document.createElement('div');
     modeSelectorEl.className = 'editor-mode-selector';
     modeSelectorEl.setAttribute('role', 'group');
@@ -20,9 +23,18 @@ export function createEditorInterface(onReturnToSentenceScreen, onModeChange, mo
     treeModeButtonEl.classList.toggle('is-active', mode === 'tree');
     textModeButtonEl.classList.toggle('is-active', mode === 'text');
     guidedModeButtonEl.classList.toggle('is-active', mode === 'guided');
-    treeModeButtonEl.addEventListener('click', () => onModeChange('tree'));
-    textModeButtonEl.addEventListener('click', () => onModeChange('text'));
-    guidedModeButtonEl.addEventListener('click', () => onModeChange('guided'));
+    treeModeButtonEl.addEventListener('click', () => {
+        onBeforeAction();
+        onModeChange('tree');
+    });
+    textModeButtonEl.addEventListener('click', () => {
+        onBeforeAction();
+        onModeChange('text');
+    });
+    guidedModeButtonEl.addEventListener('click', () => {
+        onBeforeAction();
+        onModeChange('guided');
+    });
     modeSelectorEl.replaceChildren(treeModeButtonEl, textModeButtonEl, guidedModeButtonEl);
     const zoomControlsEl = document.createElement('div');
     zoomControlsEl.className = 'editor-floating-panel editor-zoom-controls';
@@ -38,6 +50,7 @@ export function createEditorInterface(onReturnToSentenceScreen, onModeChange, mo
     rootContainerEl.id = 'editor-root-container';
     const guidedPanelEl = document.createElement('section');
     guidedPanelEl.className = 'guided-panel';
+    guidedPanelEl.hidden = mode !== 'guided';
     guidedPanelEl.setAttribute('aria-live', 'polite');
     guidedPanelEl.setAttribute('aria-label', 'Análisis guiado');
     const historyPanelEl = document.createElement('div');
@@ -50,6 +63,8 @@ export function createEditorInterface(onReturnToSentenceScreen, onModeChange, mo
     historyControlsEl.className = 'editor-floating-panel editor-history-controls';
     const undoButtonEl = createButton('↶', 'Deshacer (Ctrl+z)');
     const redoButtonEl = createButton('↷', 'Rehacer (Ctrl+y)');
+    undoButtonEl.addEventListener('click', onBeforeAction);
+    redoButtonEl.addEventListener('click', onBeforeAction);
     historyControlsEl.replaceChildren(undoButtonEl, redoButtonEl);
     historyPanelEl.replaceChildren(notificationEl, historyControlsEl);
     interfaceContainerEl.replaceChildren(homeButtonEl, modeSelectorEl, zoomControlsEl, textControlsEl, guidedPanelEl, rootContainerEl, historyPanelEl);

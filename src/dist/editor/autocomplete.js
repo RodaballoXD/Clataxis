@@ -69,8 +69,9 @@ export class FieldAutocomplete {
             return false;
         if ((event.key === 'Enter' || event.key === 'Tab')) {
             event.preventDefault();
+            if (event.key === 'Enter' && this.activeInput.value.trim() === '')
+                return false;
             this.acceptActiveSuggestion();
-            // return (event.key === 'Tab');
             return false;
         }
         if (event.key === 'Escape') {

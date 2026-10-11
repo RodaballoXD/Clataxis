@@ -52,7 +52,7 @@ export class FieldAutocomplete {
         this.panelEl.remove();
     }
 
-    handleKeyDown(event: KeyboardEvent): boolean {
+    handleKeyDown(event: KeyboardEvent): boolean /* Whether this handleKeyDown ate the event (no other handlers should process it) */ {
         if (!this.activeInput || !this.activeField || event.target !== this.activeInput) return false;
 
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -71,8 +71,8 @@ export class FieldAutocomplete {
 
         if ((event.key === 'Enter' || event.key === 'Tab')) {
             event.preventDefault();
+            if (event.key === 'Enter' && this.activeInput.value.trim() === '') return false;
             this.acceptActiveSuggestion();
-            // return (event.key === 'Tab');
             return false; 
         }
 

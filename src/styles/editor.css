@@ -234,10 +234,6 @@ root-node {
     display: none;
 }
 
-.editor-screen[data-mode="guided"] #editor-root-container {
-    padding-top: 7.5rem;
-}
-
 .guided-panel {
     position: fixed;
     left: 50%;
@@ -606,9 +602,5 @@ syntax-node:hover:not(.selected):not(:has(.children syntax-node:hover, .children
     .guided-panel {
         bottom: 4.25rem;
         padding: 0.75rem;
-    }
-
-    .editor-screen[data-mode="guided"] #editor-root-container {
-        padding: 8rem 1rem 4.5rem;
     }
 }
