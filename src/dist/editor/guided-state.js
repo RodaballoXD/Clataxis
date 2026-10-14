@@ -1,4 +1,4 @@
 export function createGuidedEditorState() {
-    return { stage: 'choose-target', candidateNodePath: null };
+    return { stage: 'choose-target' };
 }
 //# sourceMappingURL=guided-state.js.map

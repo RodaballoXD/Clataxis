@@ -40,11 +40,27 @@ export class GuidedSyntaxEditor extends SyntaxEditor {
         if (clicked.type === 'syntax') {
             const candidateNodeId = clicked.nodeEl.nodeId as number;
             this.guidedState = {
-                stage: 'choose-target',
-                candidateNodePath: this.tree.getNodePath(candidateNodeId)
+                stage: 'choose-type',
+                targetNodePath: this.tree.getNodePath(candidateNodeId)
             };
             this.selectNode(candidateNodeId);
-            this.renderGuidedPanel();
+            this.renderTree();
+        }
+        return true;
+    }
+
+    protected override handleModeKeyDown(event: KeyboardEvent): boolean {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return false;
+        event.preventDefault();
+
+        if (event.key === 'ArrowLeft') {
+            if (!this.isFirstGuidedStep() && this.guidedState.stage !== 'choose-target') {
+                this.goToPreviousGuidedStep();
+                this.renderTree();
+            }
+        } else if (this.guidedState.stage === 'steps') {
+            this.goToNextGuidedStep();
+            this.renderTree();
         }
         return true;
     }
@@ -111,18 +127,13 @@ export class GuidedSyntaxEditor extends SyntaxEditor {
     };
 
     private goToNextGuidedStep() {
-        if (this.guidedState.stage === 'choose-target') {
-            if (this.guidedState.candidateNodePath === null) return;
-            this.guidedState = { stage: 'choose-type', targetNodePath: this.guidedState.candidateNodePath };
-            return;
-        }
         if (this.guidedState.stage !== 'steps') return;
 
         const steps = this.getCurrentGuidedSteps();
         if (this.guidedState.stepIndex < steps.length - 1) {
             this.guidedState.stepIndex++;
         } else {
-            this.guidedState = { stage: 'choose-target', candidateNodePath: null };
+            this.guidedState = { stage: 'choose-target' };
             this.selectNode(null);
         }
     }
@@ -130,7 +141,7 @@ export class GuidedSyntaxEditor extends SyntaxEditor {
     private goToPreviousGuidedStep() {
         if (this.guidedState.stage === 'choose-type') {
             const targetNodeId = this.getGuidedTargetNodeId();
-            this.guidedState = { stage: 'choose-target', candidateNodePath: this.guidedState.targetNodePath };
+            this.guidedState = { stage: 'choose-target' };
             this.selectNode(targetNodeId);
             return;
         }
@@ -139,7 +150,7 @@ export class GuidedSyntaxEditor extends SyntaxEditor {
         if (this.guidedState.stepIndex > 0) {
             this.guidedState.stepIndex--;
         } else if (this.guidedState.targetNodePath === null) {
-            this.guidedState = { stage: 'choose-target', candidateNodePath: null };
+            this.guidedState = { stage: 'choose-target' };
             this.selectNode(null);
         } else {
             const targetNodeId = this.getGuidedTargetNodeId();
@@ -164,18 +175,13 @@ export class GuidedSyntaxEditor extends SyntaxEditor {
 
         if (this.guidedState.stage === 'choose-target') {
             this.addGuidedText(panel, 'h2', 'Elige qué analizar');
-            this.addGuidedText(panel, 'p', 'Haz clic en una caja del árbol y pulsa Siguiente, o elige analizar la oración completa.');
-            const candidateNodeId = this.getGuidedTargetNodeId();
-            if (candidateNodeId !== null) {
-                this.addGuidedText(panel, 'p', this.getNodeLabel(candidateNodeId));
-            }
-            const actions = this.createGuidedActions();
-            actions.append(
-                this.createGuidedButton('Anterior', 'previous', true),
-                this.createGuidedButton('Oración completa', 'choose-none'),
-                this.createGuidedButton('Siguiente', 'next', candidateNodeId === null)
-            );
-            panel.appendChild(actions);
+            this.addGuidedText(panel, 'p', 'Haz clic en una caja del árbol para elegir un sintagma, o analiza la oración completa.');
+            panel.appendChild(this.createGuidedButton(
+                'Analizar oración completa',
+                'choose-none',
+                false,
+                'guided-option guided-full-sentence-option'
+            ));
             return;
         }
 
@@ -186,7 +192,12 @@ export class GuidedSyntaxEditor extends SyntaxEditor {
             const types = document.createElement('div');
             types.className = 'guided-type-options';
             for (const syntagma of GRAMMAR.guidedSyntagmas) {
-                const button = this.createGuidedButton(`${syntagma.value} · ${syntagma.fullName}`, 'choose-type');
+                const button = this.createGuidedButton(
+                    `${syntagma.value} · ${syntagma.fullName}`,
+                    'choose-type',
+                    false,
+                    'guided-option'
+                );
                 button.dataset.syntagmaType = syntagma.value;
                 types.appendChild(button);
             }
@@ -207,7 +218,7 @@ export class GuidedSyntaxEditor extends SyntaxEditor {
         this.addGuidedText(panel, 'p', currentStep?.description ?? 'No hay pasos definidos.');
         const actions = this.createGuidedActions();
         actions.append(
-            this.createGuidedButton('Anterior', 'previous'),
+            this.createGuidedButton(this.isFirstGuidedStep() ? 'Volver' : 'Anterior', 'previous'),
             this.createGuidedButton('Siguiente', 'next')
         );
         panel.appendChild(actions);
@@ -219,12 +230,13 @@ export class GuidedSyntaxEditor extends SyntaxEditor {
         return actions;
     }
 
-    private createGuidedButton(text: string, action: string, disabled = false): HTMLButtonElement {
+    private createGuidedButton(text: string, action: string, disabled = false, className?: string): HTMLButtonElement {
         const button = document.createElement('button');
         button.type = 'button';
         button.textContent = text;
         button.dataset.guidedAction = action;
         button.disabled = disabled;
+        if (className) button.className = className;
         return button;
     }
 
@@ -241,28 +253,36 @@ export class GuidedSyntaxEditor extends SyntaxEditor {
     }
 
     private validateGuidedState() {
-        const nodePath = this.guidedState.stage === 'choose-target'
-            ? this.guidedState.candidateNodePath
-            : this.guidedState.targetNodePath;
+        if (this.guidedState.stage === 'choose-target') return;
+        const nodePath = this.guidedState.targetNodePath;
         if (nodePath === null || this.tree.getBoxNodeIdAtPath(nodePath) !== null) return;
-        this.guidedState = { stage: 'choose-target', candidateNodePath: null };
+        this.guidedState = { stage: 'choose-target' };
     }
 
     private getGuidedTargetNodeId(): number | null {
-        if (this.guidedState.stage === 'steps' && this.guidedState.targetNodePath === null) return null;
-        const nodePath = this.guidedState.stage === 'choose-target'
-            ? this.guidedState.candidateNodePath
-            : this.guidedState.targetNodePath;
-        return nodePath === null ? null : this.tree.getBoxNodeIdAtPath(nodePath);
+        if (this.guidedState.stage === 'choose-target') return null;
+        const nodePath = this.guidedState.targetNodePath;
+        if (nodePath === null) return null;
+        return this.tree.getBoxNodeIdAtPath(nodePath);
     }
 
     private updateGuidedFocus() {
         const targetNodeId = this.guidedState.stage === 'choose-target' ? null : this.getGuidedTargetNodeId();
+        const wholeSentenceIsInScope = this.guidedState.stage === 'steps'
+            && this.guidedState.targetNodePath === null;
+        this.rootEl.classList.toggle('guided-target-picker', this.guidedState.stage === 'choose-target');
         for (const [nodeId, element] of this.elementMapping) {
-            const inScope = targetNodeId === null || this.isWithinScope(nodeId, targetNodeId);
-            element.classList.toggle('guided-outside', !inScope);
-            element.classList.toggle('guided-focus', nodeId === targetNodeId);
+            const inScope = wholeSentenceIsInScope
+                || targetNodeId !== null && this.isWithinScope(nodeId, targetNodeId);
+            const shouldMute = this.guidedState.stage === 'choose-target'
+                ? element.type === 'word'
+                : !inScope;
+            element.classList.toggle('guided-outside', shouldMute);
         }
+    }
+
+    private isFirstGuidedStep(): boolean {
+        return this.guidedState.stage === 'steps' && this.guidedState.stepIndex === 0;
     }
 
     private isWithinScope(nodeId: NodeId, scopeId: number): boolean {

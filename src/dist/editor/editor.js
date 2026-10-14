@@ -51,6 +51,8 @@ export class SyntaxEditor {
                 this.handleEditingFieldNavigation(event);
                 return;
             }
+            if (this.handleModeKeyDown(event))
+                return;
             if (event.key === '+') {
                 event.preventDefault();
                 this.changeZoom(true);
@@ -218,6 +220,9 @@ export class SyntaxEditor {
         });
     }
     handleModePointerDown(_event, _clicked) {
+        return false;
+    }
+    handleModeKeyDown(_event) {
         return false;
     }
     canInteractWithNode(_nodeId) {

@@ -113,6 +113,10 @@ export class SyntaxEditor {
         return false;
     }
 
+    protected handleModeKeyDown(_event: KeyboardEvent): boolean {
+        return false;
+    }
+
     protected canInteractWithNode(_nodeId: NodeId): boolean {
         return true;
     }
@@ -169,7 +173,7 @@ export class SyntaxEditor {
         const deleteButtonEl = document.createElement('button');
         deleteButtonEl.type = 'button';
         deleteButtonEl.textContent = '🗑';
-        deleteButtonEl.title = 'Eliminar caja (Supr)';
+        deleteButtonEl.title = 'Eliminar caja (Suprimir)';
         deleteButtonEl.addEventListener('click', (event) => {
             event.stopPropagation();
             this.deleteNode();
@@ -214,6 +218,8 @@ export class SyntaxEditor {
             this.handleEditingFieldNavigation(event);
             return;
         }
+
+        if (this.handleModeKeyDown(event)) return;
 
         if (event.key === '+') {
             event.preventDefault();
