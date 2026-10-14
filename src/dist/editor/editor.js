@@ -272,7 +272,7 @@ export class SyntaxEditor {
         const deleteButtonEl = document.createElement('button');
         deleteButtonEl.type = 'button';
         deleteButtonEl.textContent = '🗑';
-        deleteButtonEl.title = 'Eliminar caja (Supr)';
+        deleteButtonEl.title = 'Eliminar caja (Suprimir)';
         deleteButtonEl.addEventListener('click', (event) => {
             event.stopPropagation();
             this.deleteNode();
@@ -450,12 +450,7 @@ export class SyntaxEditor {
         }
         if (event.key === 'Tab') {
             event.preventDefault();
-            let nextIndex = (event.shiftKey) ? currentIndex - 1 : currentIndex + 1;
-            if (nextIndex < 0)
-                nextIndex = inputs.length - 1;
-            if (nextIndex >= inputs.length)
-                nextIndex = 0;
-            this.focusEditingInput(nextIndex, event.shiftKey);
+            this.focusNextEditingInput(event.target, event.shiftKey);
             return;
         }
     }
@@ -477,6 +472,15 @@ export class SyntaxEditor {
         const position = (atEnd) ? input.value.length : 0;
         input.setSelectionRange(position, position);
     }
+    focusNextEditingInput(currentInput, shiftKey = false) {
+        const inputs = this.getEditingInputElements();
+        const currentIndex = inputs.indexOf(currentInput);
+        if (currentIndex < 0)
+            return;
+        const direction = shiftKey ? -1 : 1;
+        const nextIndex = (currentIndex + direction + inputs.length) % inputs.length;
+        this.focusEditingInput(nextIndex, shiftKey);
+    }
     startEditing(event) {
         let field = (event) ? getField(event) : null;
         const didFindField = !!field;
@@ -492,7 +496,7 @@ export class SyntaxEditor {
             type: element.type,
             field: null
         };
-        this.autocomplete.connect(this.state.editing.elements);
+        this.autocomplete.connect(this.state.editing.elements, (input) => this.focusNextEditingInput(input));
         if (field === null) {
             field = (element.type === 'word') ? 'word' : 'function';
         }

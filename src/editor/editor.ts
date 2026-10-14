@@ -519,10 +519,7 @@ export class SyntaxEditor {
 
         if (event.key === 'Tab') {
             event.preventDefault();
-            let nextIndex = (event.shiftKey) ? currentIndex - 1 : currentIndex + 1;
-            if (nextIndex < 0) nextIndex = inputs.length - 1;
-            if (nextIndex >= inputs.length) nextIndex = 0;
-            this.focusEditingInput(nextIndex, event.shiftKey);
+            this.focusNextEditingInput(event.target, event.shiftKey);
             return;
         }
     }
@@ -548,6 +545,16 @@ export class SyntaxEditor {
         input.setSelectionRange(position, position);
     }
 
+    private focusNextEditingInput(currentInput: HTMLInputElement, shiftKey = false) {
+        const inputs = this.getEditingInputElements();
+        const currentIndex = inputs.indexOf(currentInput);
+        if (currentIndex < 0) return;
+
+        const direction = shiftKey ? -1 : 1;
+        const nextIndex = (currentIndex + direction + inputs.length) % inputs.length;
+        this.focusEditingInput(nextIndex, shiftKey);
+    }
+
     private startEditing(event?: PointerEvent) {
         let field = (event) ? getField(event) : null;
         const didFindField = !!field;
@@ -563,7 +570,10 @@ export class SyntaxEditor {
             type: element.type,
             field: null
         };
-        this.autocomplete.connect(this.state.editing.elements);
+        this.autocomplete.connect(
+            this.state.editing.elements,
+            (input) => this.focusNextEditingInput(input)
+        );
 
         if (field === null) {
             field = (element.type === 'word') ? 'word' : 'function';

@@ -1,9 +1,16 @@
-import { AUTOCOMPLETE_SUGGESTIONS } from "../analysis-behaviour/autocomplete-suggestions.js";
+import { GRAMMAR } from "../grammar/placeholder-grammar.js";
 const MAX_SUGGESTIONS = 64;
+const OTHER_FIELD_PENALTY = 50;
+const ALL_SUGGESTIONS = [
+    ...GRAMMAR.categories.map((suggestion) => ({ ...suggestion, field: 'category' })),
+    ...GRAMMAR.functions.map((suggestion) => ({ ...suggestion, field: 'function' }))
+];
 export class FieldAutocomplete {
     constructor() {
         this.activeInput = null;
         this.activeField = null;
+        this.fieldInputs = {};
+        this.navigateAfterAccept = null;
         this.activeIndex = 0;
         this.currentSuggestions = [];
         this.detachCallbacks = [];
@@ -35,11 +42,16 @@ export class FieldAutocomplete {
         window.addEventListener('resize', this.reposition);
         window.addEventListener('scroll', this.reposition, true);
     }
-    connect(elements) {
+    connect(elements, navigateAfterAccept) {
         this.disconnectFields();
         this.hide();
         if (!elements)
             return;
+        this.fieldInputs = {
+            category: elements.category,
+            function: elements.function
+        };
+        this.navigateAfterAccept = navigateAfterAccept ?? null;
         this.attachInput(elements.category, 'category');
         this.attachInput(elements.function, 'function');
         this.selectIndex(0, -1);
@@ -67,12 +79,13 @@ export class FieldAutocomplete {
         }
         if (!this.isVisible())
             return false;
-        if ((event.key === 'Enter' || event.key === 'Tab')) {
+        if (event.key === 'Enter' || event.key === 'Tab') {
             event.preventDefault();
             if (event.key === 'Enter' && this.activeInput.value.trim() === '')
                 return false;
+            const suggestion = this.currentSuggestions[this.activeIndex];
             this.acceptActiveSuggestion();
-            return false;
+            return event.key === 'Tab' && suggestion?.field !== this.activeField;
         }
         if (event.key === 'Escape') {
             event.preventDefault();
@@ -118,6 +131,8 @@ export class FieldAutocomplete {
         this.detachCallbacks = [];
         this.activeInput = null;
         this.activeField = null;
+        this.fieldInputs = {};
+        this.navigateAfterAccept = null;
         this.currentSuggestions = [];
     }
     refresh() {
@@ -125,7 +140,7 @@ export class FieldAutocomplete {
         if (!anchorInput || !this.activeField)
             return;
         this.activeInput = anchorInput;
-        this.currentSuggestions = getRankedSuggestions(anchorInput.value, AUTOCOMPLETE_SUGGESTIONS[this.activeField]);
+        this.currentSuggestions = getRankedSuggestions(anchorInput.value, this.activeField, ALL_SUGGESTIONS);
         this.activeIndex = 0;
         this.render();
     }
@@ -140,17 +155,17 @@ export class FieldAutocomplete {
             const optionEl = document.createElement('button');
             optionEl.type = 'button';
             optionEl.id = `autocomplete-option-${index}`;
-            optionEl.className = 'autocomplete-option';
+            optionEl.className = `autocomplete-option ${suggestion.field}`;
             optionEl.setAttribute('role', 'option');
             optionEl.setAttribute('aria-selected', String(index === this.activeIndex));
-            optionEl.setAttribute('aria-label', `${suggestion.value} — ${suggestion.fullName}`);
+            optionEl.setAttribute('aria-label', `${suggestion.value} — ${suggestion.fullName} (${suggestion.field})`);
             const valueEl = document.createElement('span');
             valueEl.className = 'autocomplete-option-value';
             valueEl.textContent = suggestion.value;
             optionEl.append(valueEl);
             optionEl.addEventListener('pointerdown', (event) => {
                 event.preventDefault();
-                this.acceptSuggestion(suggestion);
+                this.acceptSuggestion(suggestion, suggestion.field === this.activeField);
             });
             return optionEl;
         });
@@ -194,6 +209,7 @@ export class FieldAutocomplete {
         }
         const titleEl = document.createElement('div');
         titleEl.className = 'autocomplete-detail-title';
+        titleEl.classList.add(suggestion.field);
         titleEl.textContent = suggestion.value;
         const fullEl = document.createElement('div');
         fullEl.className = 'autocomplete-detail-full';
@@ -209,14 +225,29 @@ export class FieldAutocomplete {
         if (suggestion)
             this.acceptSuggestion(suggestion);
     }
-    acceptSuggestion(suggestion) {
-        if (!this.activeInput)
+    acceptSuggestion(suggestion, navigateAfterAccept = false) {
+        const sourceInput = this.activeInput;
+        if (!sourceInput)
             return;
-        this.activeInput.value = suggestion.value;
-        this.activeInput.dispatchEvent(new Event('input', { bubbles: true }));
-        this.activeInput.focus();
-        this.activeInput.setSelectionRange(suggestion.value.length, suggestion.value.length);
+        const targetInput = this.fieldInputs[suggestion.field];
+        if (!targetInput)
+            return;
+        targetInput.value = suggestion.value;
+        if (targetInput !== sourceInput) {
+            sourceInput.value = '';
+            sourceInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+        sourceInput.focus();
+        if (targetInput === sourceInput) {
+            sourceInput.setSelectionRange(suggestion.value.length, suggestion.value.length);
+        }
+        else {
+            sourceInput.setSelectionRange(0, 0);
+        }
         this.hide();
+        if (navigateAfterAccept)
+            this.navigateAfterAccept?.(sourceInput);
     }
     hide() {
         this.panelEl.style.display = 'none';
@@ -242,32 +273,36 @@ export class FieldAutocomplete {
         requestAnimationFrame(this.reposition);
     }
 }
-function getRankedSuggestions(query, suggestions) {
+function getRankedSuggestions(query, activeField, suggestions) {
     const normalizedQuery = normalizeSearchText(query);
     return suggestions
         .map((suggestion, index) => ({
         suggestion,
         index,
-        score: scoreSuggestion(normalizedQuery, suggestion)
+        score: scoreSuggestion(normalizedQuery, activeField, suggestion)
     }))
         .filter((result) => result.score !== null)
-        .sort((a, b) => a.score - b.score || a.index - b.index)
+        .sort((a, b) => (a.score ?? Infinity) - (b.score ?? Infinity) || a.index - b.index)
         .slice(0, MAX_SUGGESTIONS)
         .map((result) => result.suggestion);
 }
-function scoreSuggestion(query, suggestion) {
-    if (query === '')
-        return 100;
-    const primaryScore = scoreSearchText(query, suggestion.value);
-    if (primaryScore !== null)
-        return primaryScore;
-    const secondaryScore = scoreSearchText(query, suggestion.fullName);
-    if (secondaryScore !== null)
-        return secondaryScore + 100;
-    const descriptionScore = scoreSearchText(query, suggestion.description);
-    if (descriptionScore !== null)
-        return descriptionScore + 250;
-    return null;
+function scoreSuggestion(query, activeField, suggestion) {
+    const fieldPenalty = suggestion.field === activeField ? 0 : OTHER_FIELD_PENALTY;
+    const matches = [
+        { text: suggestion.value, penalty: 0 },
+        { text: suggestion.fullName, penalty: 100 },
+        { text: suggestion.description, penalty: 250 }
+    ];
+    let bestScore = null;
+    for (const match of matches) {
+        const relevance = (query === '') ? 100 : scoreSearchText(query, match.text);
+        if (relevance === null)
+            continue;
+        const score = match.penalty + relevance + fieldPenalty;
+        if (bestScore === null || score < bestScore)
+            bestScore = score;
+    }
+    return bestScore;
 }
 function scoreSearchText(query, value) {
     const normalizedValue = normalizeSearchText(value);

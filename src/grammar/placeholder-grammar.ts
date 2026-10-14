@@ -131,8 +131,3 @@ export const GRAMMAR = {
         { id: 'sentence-predicate', description: 'Identifica el predicado.' }
     ] satisfies GuidedStepDefinition[]
 };
-
-export const AUTOCOMPLETE_SUGGESTIONS: Record<AutocompleteField, AutocompleteSuggestion[]> = {
-    category: GRAMMAR.categories,
-    function: GRAMMAR.functions
-};

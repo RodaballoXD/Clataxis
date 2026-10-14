@@ -103,8 +103,4 @@ export const GRAMMAR = {
         { id: 'sentence-predicate', description: 'Identifica el predicado.' }
     ]
 };
-export const AUTOCOMPLETE_SUGGESTIONS = {
-    category: GRAMMAR.categories,
-    function: GRAMMAR.functions
-};
 //# sourceMappingURL=placeholder-grammar.js.map

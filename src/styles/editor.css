@@ -456,9 +456,14 @@ root-node {
     background: rgba(4, 194, 232, 0.12);
 }
 
-.autocomplete-option:hover .autocomplete-option-value,
-.autocomplete-option.active .autocomplete-option-value {
-    color: #155d6d;
+.autocomplete-option.category .autocomplete-option-value,
+.autocomplete-detail-title.category {
+    color: #7A4A1A;
+}
+
+.autocomplete-option.function .autocomplete-option-value,
+.autocomplete-detail-title.function {
+    color: #2F6B7F;
 }
 
 .autocomplete-detail-title {
