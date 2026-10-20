@@ -117,6 +117,8 @@ export class SyntaxTree {
         return { startToken, endToken };
     }
 
+
+
     getJSON(): RootNode {
         return this.tree;
     }
@@ -141,6 +143,8 @@ export class SyntaxTree {
             cont: node.contents.map(child => this.reduceNode(child))
         };
     }
+
+
 
     getNode(id: NodeId): SyntaxNode | RootNode | WordNode {
         const node = this.nodeMap.get(id);
@@ -190,6 +194,8 @@ export class SyntaxTree {
         return node;
     }
 
+
+
     setNodeAnalysis(id: number, analysis: AnalysisData) {
         const node = this.getNode(id) as SyntaxNode;
         if ((node as any).type === 'word') throw new Error('Cannot setNodeAnalysis of WordNode');
@@ -207,9 +213,24 @@ export class SyntaxTree {
         }
     }
 
+
+
+    promoteChildren(id: number) { // Deletes the node and gives its children to its parent
+        const node = this.getNode(id) as SyntaxNode | WordNode;
+        if (node.type === 'word') {
+            throw new Error('Cannot delete word node');
+        }
+        const children = node.contents;
+        const parent = this.getParentNode(id);
+        const nodeIndexInParent = parent.contents.indexOf(node);
+        parent.contents.splice(nodeIndexInParent, 1, ...children);
+
+        this.mapNodes();
+    }
+
     deleteNode(id: number) { // Deletes the node and its children, only keeping words
-        const node = this.getNode(id) as SyntaxNode;
-        if ((node as any).type === 'word') throw new Error('Cannot delete word node');
+        const node = this.getNode(id) as SyntaxNode | WordNode;
+        if (node.type === 'word') throw new Error('Cannot delete word node');
 
         const parent = this.getParentNode(id) as SyntaxNode | RootNode;
         const nodeIndexInParent = parent.contents.indexOf(node);
@@ -233,18 +254,7 @@ export class SyntaxTree {
         }
     }
 
-    promoteChildren(id: number) { // Deletes the node and gives its children to its parent
-        const node = this.getNode(id) as SyntaxNode;
-        if ((node as any).type === 'word') {
-            throw new Error('Cannot delete word node');
-        }
-        const children = node.contents;
-        const parent = this.getParentNode(id);
-        const nodeIndexInParent = parent.contents.indexOf(node);
-        parent.contents.splice(nodeIndexInParent, 1, ...children);
 
-        this.mapNodes();
-    }
 
     insertBoxAtRange(start: number, end: number): ({ status: 'error' } | { innermostUntouchedId: NodeId, newNodeId: number, status: 'success' }) {
         const root = this.tree;
@@ -317,6 +327,8 @@ export class SyntaxTree {
         }
     }
 
+
+
     setWordNodeAtId(id: number, wordData: WordNodeData): boolean /* tree was modified */ {
         const node = this.getNode(id);
         if (node.type !== 'word') throw new Error("Attempted to `setWordNodeAtId` on box node");
@@ -387,6 +399,8 @@ export class SyntaxTree {
         parent.contents.splice(idxInParent, 1, ...newNodes);
     }
 
+
+
     getWordsFromTokenRange(startToken: number, endToken: number, fromNode: SyntaxNode | RootNode = this.tree): WordNode[] {
         const children = fromNode.contents;
         let foundInRange = [];
@@ -398,6 +412,133 @@ export class SyntaxTree {
             foundInRange.push(...this.getWordsFromTokenRange(startToken, endToken, child));
         }
         return foundInRange;
+    }
+
+
+
+    resizeNode(id: number, token: number, edge: 'start' | 'end'): boolean | string /* true/false if modified/unchanged, or an error message */ {
+        const node = this.getNode(id) as SyntaxNode | WordNode;
+        if (node.type === 'word') throw new Error('Cannot resize word node');
+
+        const notChanged = (edge === 'start' && token === node.startToken) || (edge === 'end' && token === node.endToken);
+        if (notChanged) return false;
+
+        if ((edge === 'start' && token > node.endToken) || (edge === 'end' && token < node.startToken)) {
+            return 'The resized node must contain at least one token';
+        }
+
+        const madeBigger = (edge === 'start' && token < node.startToken) || (edge === 'end' && token > node.endToken);
+        if (madeBigger) {
+            return this.resizeNodeToBigger(node, token, edge);
+        }
+        this.resizeNodeToSmaller(node, token, edge);
+        return true;
+    }
+
+    private resizeNodeToBigger(node: SyntaxNode, token: number, edge: 'start' | 'end'): boolean | string /* true if modified, or an error message */ {
+        const parent = this.getParentNode(node.id);
+        const parentInRange = (edge === 'start') ? (parent.startToken <= token) : (parent.endToken >= token);
+        if (!parentInRange) return 'The resized node cannot extend beyond its parent';
+
+        const siblings = parent.contents;
+        const nodeIndex = siblings.indexOf(node);
+        if (nodeIndex < 0) throw new Error(`Node ${node.id} is not in its parent's contents`);
+
+        const coveredSiblings: (SyntaxNode | WordNode)[] = [];
+        if (edge === 'start') {
+            for (let index = nodeIndex - 1; index >= 0; index--) {
+                const sibling = siblings[index];
+                const siblingEnd = sibling.type === 'word' ? sibling.token : sibling.endToken;
+                if (siblingEnd < token) break;
+
+                if (sibling.type === 'box' && sibling.startToken < token) {
+                    return 'The resize cannot cross the middle of a sibling node';
+                }
+                coveredSiblings.unshift(sibling);
+            }
+
+            node.contents = [...coveredSiblings, ...node.contents];
+            node.startToken = token;
+            siblings.splice(nodeIndex - coveredSiblings.length, coveredSiblings.length + 1, node);
+        } else {
+            for (let index = nodeIndex + 1; index < siblings.length; index++) {
+                const sibling = siblings[index];
+                const siblingStart = sibling.type === 'word' ? sibling.token : sibling.startToken;
+                if (siblingStart > token) break;
+
+                if (sibling.type === 'box' && sibling.endToken > token) {
+                    return 'The resize cannot cross the middle of a sibling node';
+                }
+                coveredSiblings.push(sibling);
+            }
+
+            node.contents = [...node.contents, ...coveredSiblings];
+            node.endToken = token;
+            siblings.splice(nodeIndex, coveredSiblings.length + 1, node);
+        }
+
+        this.mapNodes();
+        return true;
+    }
+
+    private resizeNodeToSmaller(node: SyntaxNode, token: number, edge: 'start' | 'end') {
+        const outside = shrinkNodeToRange(node, token, edge);
+        const parent = this.getParentNode(node.id);
+        const nodeIndexInParent = parent.contents.indexOf(node);
+
+        const newContents = edge === 'start' ? [...outside, node] : [node, ...outside];
+        parent.contents.splice(nodeIndexInParent, 1, ...newContents);
+        this.mapNodes();
+
+        function shrinkNodeToRange(node: SyntaxNode, token: number, edge: 'start' | 'end'): (SyntaxNode | WordNode)[] {
+            const { outside, inside } = getOutsideInside(node, token, edge);
+            node.contents = inside;
+            if (edge === 'start') {
+                node.startToken = token;
+            } else {
+                node.endToken = token;
+            }
+
+            const partiallyInside = getPartiallyInside(inside, token, edge);
+            if (!partiallyInside) return outside;
+
+            const nestedOutside = shrinkNodeToRange(partiallyInside, token, edge);
+            return edge === 'start' ? [...outside, ...nestedOutside] : [...nestedOutside, ...outside];
+        }
+
+        function getOutsideInside(node: SyntaxNode, token: number, edge: 'start' | 'end'): { outside: (SyntaxNode | WordNode)[], inside: (SyntaxNode | WordNode)[] } {
+            const children = node.contents;
+            const outside: (SyntaxNode | WordNode)[] = [];
+            const inside: (SyntaxNode | WordNode)[] = [];
+            for (const child of children) {
+                let isOut: boolean;
+                if (edge === 'start') {
+                    isOut = (child.type === 'word') ? (child.token < token) : (child.endToken < token);
+                } else {
+                    isOut = (child.type === 'word') ? (child.token > token) : (child.startToken > token);
+                }
+
+                if (isOut) {
+                    outside.push(child);
+                } else {
+                    inside.push(child);
+                }
+            }
+            return { outside, inside };
+        }
+
+        function getPartiallyInside(children: (SyntaxNode | WordNode)[], token: number, edge: 'start' | 'end'): SyntaxNode /* There can only be one */ | null {
+            for (const child of children) {
+                if (child.type === 'word') continue;
+                const isPartiallyInside = edge === 'start'
+                    ? child.startToken < token && child.endToken >= token
+                    : child.startToken <= token && child.endToken > token;
+                if (isPartiallyInside) {
+                    return child;
+                }
+            }
+            return null;
+        }
     }
 }
 
@@ -414,6 +555,14 @@ export function sentenceToReducedJSON(sentence: string): ReducedJSON | null {
 }
 
 
+
+export interface RootNode {
+    id: 'root';
+    type: 'box';
+    startToken: number;
+    endToken: number;
+    contents: (SyntaxNode | WordNode)[];
+}
 
 export interface SyntaxNode {
     id: number;
@@ -432,14 +581,6 @@ export interface WordNode {
     token: number;
     word: string;
     comment?: string | null;
-}
-
-export interface RootNode {
-    id: 'root';
-    type: 'box';
-    startToken: number;
-    endToken: number;
-    contents: (SyntaxNode | WordNode)[];
 }
 
 export interface ReducedSyntaxBox {

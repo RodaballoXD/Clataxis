@@ -806,3 +806,7 @@ function sameReducedJSON(a: ReducedJSON, b: ReducedJSON): boolean {
 function cloneReducedJSON(json: ReducedJSON): ReducedJSON {
     return JSON.parse(JSON.stringify(json)) as ReducedJSON;
 }
+
+
+// TODO: Arrow keys to navigate between word nodes
+// TODO: On Box create, scroll to the middle of it so text field is visible in big sentences
