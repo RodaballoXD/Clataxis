@@ -2,7 +2,7 @@ import { SyntaxTree } from "./tree.js";
 import { FieldAutocomplete } from "./autocomplete.js";
 const ZOOM_STEPS = [0.25, 0.3, 0.4, 0.5, 0.6, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4];
 export class SyntaxEditor {
-    constructor(json, onChange = () => { }, controls) {
+    constructor(json, onChange = () => { }, controls, initialZoom = 1) {
         this.supportsHistory = true;
         this.zoom = 1;
         this.notificationTimeout = null;
@@ -166,6 +166,7 @@ export class SyntaxEditor {
         };
         this.tree = new SyntaxTree(json);
         this.rootEl = document.createElement('root-node');
+        this.zoom = initialZoom;
         this.appEl = document.getElementById('app');
         this.selectionActionsEl = this.createSelectionActions();
         this.onChange = onChange;
@@ -173,9 +174,13 @@ export class SyntaxEditor {
     }
     mount(container) {
         container.appendChild(this.rootEl);
+        this.rootEl.style.zoom = String(this.zoom);
         this.renderTree();
         this.installListeners();
         this.installControlListeners();
+    }
+    get zoomLevel() {
+        return this.zoom;
     }
     destroy() {
         this.appEl.removeEventListener('pointerdown', this.onPointerDown);

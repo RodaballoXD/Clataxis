@@ -1,0 +1,186 @@
+root-node {
+    min-height: 20vh;
+}
+
+.children {
+    display: flex;
+    justify-content: center;
+    flex-grow: 1;
+}
+
+#editor-container .editing > input {
+    display: block;
+    outline: solid 0.1rem #00000076;
+    border-radius: 0.5rem;
+    border: none;
+    background: none;
+    font-weight: 670;
+    font-size: 1.2rem;
+    field-sizing: content;
+    min-width: 2.5rem;
+    height: 1.1rem;
+    margin-top: 0.35rem;
+    
+}
+
+#editor-container .editing > input:placeholder-shown {
+    opacity: 0.5;
+    font-size: 1rem;
+}
+
+syntax-node {
+    display: flex;
+    position: relative;
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+}
+
+.syntax-node {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+
+.word, .word-input {
+    padding: 0 0.6rem 0.6rem;
+}
+
+word-node:not(.selected) > .word-node:not(.editing):hover > .word {
+    background: rgba(31, 122, 140, 0.04);
+    border-radius: 999px;
+    box-shadow: inset 0 0 0 1px rgba(31, 122, 140, 0.1);
+}
+
+.selected > .word-node > .word {
+    background: #f1a03d25;
+    border-radius: 999px;
+    box-shadow: inset 0 0 0 1px #f1a03d38;
+}
+
+.line {
+    border-top: 2.4px solid #424242;
+    margin: 0.5rem 0.8rem 0;
+}
+
+syntax-node:hover:not(.selected):not(:has(.children syntax-node:hover, .children word-node:hover, .analysis.editing)) > .syntax-node > .line {
+    border-color: #1f7a8c;
+    box-shadow: 0 0 0 3px rgba(31, 122, 140, 0.08);
+}
+
+.selected > .syntax-node > .line {
+    border-color: #a66c26;
+    box-shadow: 0 0 0 3px rgba(166, 108, 38, 0.12);
+}
+
+.node-action-buttons {
+    display: flex;
+    position: absolute;
+    left: 50%;
+    bottom: -0.5rem;
+    z-index: 2;
+    transform: translateX(-50%);
+    gap: 2rem;
+    pointer-events: auto;
+}
+
+.node-action-buttons > button {
+    width: 1.8rem;
+    height: 1.8rem;
+    border: 1px solid #d7dfe8;
+    border-radius: 999px;
+    padding: 0;
+    color: #1d2430;
+    background: #ffffff;
+    box-shadow: none;
+    font: inherit;
+    font-size: 0.95rem;
+    font-weight: 650;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.node-action-buttons > button:hover {
+    background: #f7f9fb;
+}
+
+.node-action-buttons > button:focus-visible {
+    outline: 2px solid rgba(31, 122, 140, 0.2);
+    outline-offset: 2px;
+}
+
+.editing > span:not(.slash),
+.editing > div {
+    display: none;
+}
+
+.comment.left-margin, .comment-input {
+    margin-left: 1rem;
+}
+
+.comment, .comment-input {
+    color: #5b5b5b;
+}
+
+.analysis {
+    margin-bottom: 1.5rem;
+    padding: 0 1rem;
+    display: flex;
+    justify-content: center;
+    font-weight: 670;
+    font-size: 1.2rem;
+    min-height: 1.6rem;
+}
+
+.slash {
+    color: #00000076;
+    margin: 0 0.25rem;
+}
+
+.category, .category-input {
+    color: #7a4a1a;
+}
+
+.function, .function-input {
+    color: #2f6b7f;
+}
+
+.function, .category, .comment {
+    width: max-content;
+}
+
+
+.word-node {
+    padding: 0 0.8rem;
+    font-size: 2.4rem;
+    min-width: 4.5rem;
+    font-weight: bold;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    user-select: none;
+    touch-action: none;
+}
+
+.word-comment, .word-comment-input {
+    min-height: 1.6rem;
+    font-weight: 670;
+    text-align: center;
+    font-size: 1.2rem;
+    color: #5b5b5b;
+}
+
+#editor-container .word-node.editing > .word-input {
+    font-size: 2.4rem;
+    height: fit-content;
+    font-weight: bold;
+}
+
+.drag-target > .word-node > .word {
+    background: rgba(31, 122, 140, 0.12);
+    color: #155d6d;
+    box-shadow: inset 0 0 0 1px rgba(31, 122, 140, 0.25);
+    border-radius: 999px;
+}

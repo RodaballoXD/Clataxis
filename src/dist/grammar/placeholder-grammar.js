@@ -34,10 +34,13 @@ export const GRAMMAR = {
         suggestion("exclam", "Exclamativo (Clase transversal)", "Gramatical. Introduce enunciados de carácter ponderativo, valorativo o expresivo."),
         suggestion("or. simple", "Oración simple", "Estructura que consta de un único predicado verbal y, por tanto, un solo núcleo de predicación."),
         suggestion("or. compuesta", "Oración compuesta", "Estructura sintáctica formada por dos o más oraciones que se combinan mediante nexos o yuxtaposición."),
+        suggestion("or. compleja", "Oración compleja", "Estructura sintáctica formada por dos o más oraciones que se combinan mediante nexos subordinados."),
         suggestion("or. coord", "Oración coordinada", "Unión de dos o más oraciones independientes mediante nexos coordinantes sin jerarquía entre ellas."),
         suggestion("or. sub", "Oración subordinada", "Oración que depende jerárquicamente de otra principal y ejerce una función sintáctica dentro de ella."),
         suggestion("or. sub. sust", "Oración subordinada sustantiva", "Equivale a un sustantivo o grupo nominal y cumple funciones como sujeto, CD o término."),
         suggestion("or. sub. rel", "Oración subordinada de relativo", "Modifica a un antecedente sustantivo de forma especificativa o explicativa (tradicionalmente adjetiva)."),
+        suggestion("or. sub. rel. semilibre", "Oración subordinada de relativo semilibre", "Oración subordinada de relativo que carece de antecedente explícito. Tradicionalmente adjetiva sustantivada."),
+        suggestion("or. sub. rel. libre", "Oración subordinada de relativo libre", "Oración subordinada de relativo que carece de antecedente explícito. Tradicionalmente adjetiva sustantivada."),
         suggestion("or. sub. adv", "Oración subordinada adverbial / circunstancial", "Aporta información contextual o de causa, condición, concesión o consecuencia (NGLE: construcciones de la predicación)."),
         suggestion("or. yuxt", "Oración yuxtapuesta", "Oraciones unidas directamente de forma lógica sin la presencia de un nexo gramatical (separadas por signos de puntuación).")
     ],

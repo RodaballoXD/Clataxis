@@ -43,10 +43,12 @@ export class SyntaxEditor {
     constructor(
         json: ReducedJSON,
         onChange: (json: ReducedJSON) => void = () => {},
-        controls: EditorInterfaceEls
+        controls: EditorInterfaceEls,
+        initialZoom = 1
     ) {
         this.tree = new SyntaxTree(json);
         this.rootEl = document.createElement('root-node') as RootNodeEl;
+        this.zoom = initialZoom;
         this.appEl = document.getElementById('app') as HTMLDivElement;
         this.selectionActionsEl = this.createSelectionActions();
         this.onChange = onChange;
@@ -55,9 +57,14 @@ export class SyntaxEditor {
 
     mount(container: HTMLElement) {
         container.appendChild(this.rootEl);
+        this.rootEl.style.zoom = String(this.zoom);
         this.renderTree();
         this.installListeners();
         this.installControlListeners();
+    }
+
+    get zoomLevel(): number {
+        return this.zoom;
     }
 
     destroy() {

@@ -1,6 +1,5 @@
 import { createEditorInterface } from "./editor/editor-screen.js";
 import { SyntaxEditor } from "./editor/editor.js";
-import { GuidedSyntaxEditor } from "./editor/guided-editor.js";
 import { sentenceToReducedJSON } from "./editor/tree.js";
 import { reducedJSONToSyntaxRepr } from "./editor/tree-format.js";
 import { TextSyntaxEditor } from "./editor/text-editor.js";
@@ -124,15 +123,16 @@ export class App {
         const json = this.currentEditorJSON;
         if (!json)
             return;
+        const zoomLevel = this.activeEditor?.zoomLevel ?? 1;
         this.activeEditor?.destroy();
         this.activeEditor = null;
         this.activeTextEditor?.destroy();
         this.activeTextEditor = null;
         this.editorMode = mode;
         this.appEl.replaceChildren();
-        this.mountEditorScreen(json, 'none', mode);
+        this.mountEditorScreen(json, 'none', mode, zoomLevel);
     }
-    mountEditorScreen(json, urlMode, mode) {
+    mountEditorScreen(json, urlMode, mode, zoomLevel = 1) {
         const onReturnToSentenceScreen = () => {
             this.setScreen('sentence', undefined, 'push');
         };
@@ -144,11 +144,9 @@ export class App {
         if (urlMode !== 'none') {
             setEditorJSONInURL(json, urlMode);
         }
-        if (mode !== 'text') {
+        if (mode === 'tree') {
             const onChange = (nextJSON) => this.recordAnalysisChange(nextJSON);
-            const editor = mode === 'guided'
-                ? new GuidedSyntaxEditor(json, onChange, editorContainerEls)
-                : new SyntaxEditor(json, onChange, editorContainerEls);
+            const editor = new SyntaxEditor(json, onChange, editorContainerEls, zoomLevel);
             this.activeEditor = editor;
             editor.mount(editorContainerEls.rootContainerEl);
             return;

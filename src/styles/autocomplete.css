@@ -1,0 +1,99 @@
+.autocomplete-panel {
+    position: fixed;
+    z-index: 50;
+    display: flex;
+    align-items: stretch;
+    max-height: 14rem;
+    overflow: hidden;
+    background: none;
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+}
+
+.autocomplete-list {
+    flex: 1 1 16rem;
+    max-height: 12rem;
+    min-width: 6rem;
+    overflow-y: auto;
+    padding: 0.25rem;
+    background: #ffffff;
+    scrollbar-width: thin;
+    border: 1px solid #d4dbe4;
+    border-radius: 0.5rem;
+    box-shadow: 0.2rem 0.2rem 0.3rem rgba(29, 36, 48, 0.16);
+}
+
+.autocomplete-details {
+    display: flex;
+    flex: 0 0 12rem;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 12rem;
+    margin-left: 0.2rem;
+    height: fit-content;
+    padding: 0.55rem 0.7rem;
+    border-left: 1px solid #e3e8ef;
+    background: #f8fafc;
+    border-radius: 0.5rem;
+    box-shadow: 0.1rem 0.1rem 0.2rem rgba(29, 36, 48, 0.16);
+}
+
+.autocomplete-option {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    border: none;
+    border-radius: 0.35rem;
+    padding: 0.45rem 0.65rem;
+    color: #1d2430;
+    background: transparent;
+    font: inherit;
+    font-size: 0.92rem;
+    font-weight: 700;
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+
+.autocomplete-option-value {
+    color: #0f172a;
+}
+
+.autocomplete-option:hover,
+.autocomplete-option.active {
+    color: #155d6d;
+    background: rgba(31, 122, 140, 0.12);
+}
+
+.autocomplete-option:hover {
+    background: rgba(4, 194, 232, 0.12);
+}
+
+.autocomplete-option.category .autocomplete-option-value,
+.autocomplete-detail-title.category {
+    color: #7A4A1A;
+}
+
+.autocomplete-option.function .autocomplete-option-value,
+.autocomplete-detail-title.function {
+    color: #2F6B7F;
+}
+
+.autocomplete-detail-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.autocomplete-detail-full {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #475569;
+}
+
+.autocomplete-detail-description {
+    font-size: 0.76rem;
+    line-height: 1.2;
+    color: #64748b;
+}

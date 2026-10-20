@@ -3,39 +3,71 @@ export function createEditorInterface(onReturnToSentenceScreen, onModeChange, mo
     interfaceContainerEl.id = 'editor-container';
     interfaceContainerEl.className = 'editor-screen';
     interfaceContainerEl.dataset.mode = mode;
-    const homeButtonEl = createButton('Volver', 'Volver a introducir oración');
-    homeButtonEl.id = 'editor-home-button';
-    homeButtonEl.className = 'editor-floating-button';
-    homeButtonEl.addEventListener('click', () => {
+    const modeSelectorEl = document.createElement('div');
+    modeSelectorEl.className = 'editor-mode-selector';
+    const modeMenuButtonEl = createButton('', 'Abrir menú de edición');
+    modeMenuButtonEl.className = 'editor-mode-menu-button';
+    modeMenuButtonEl.setAttribute('aria-haspopup', 'true');
+    modeMenuButtonEl.setAttribute('aria-expanded', 'false');
+    modeMenuButtonEl.setAttribute('aria-controls', 'editor-mode-dropdown');
+    modeMenuButtonEl.appendChild(createIcon('M4 6h16M4 12h16M4 18h16', 'editor-menu-icon'));
+    const modeDropdownEl = document.createElement('div');
+    modeDropdownEl.id = 'editor-mode-dropdown';
+    modeDropdownEl.className = 'editor-mode-dropdown';
+    modeDropdownEl.hidden = true;
+    modeDropdownEl.setAttribute('role', 'group');
+    modeDropdownEl.setAttribute('aria-label', 'Modos de edición');
+    const treeModeButtonEl = createModeButton('Árbol', 'M12 4v5m0 0H7m5 0h5M7 9v4m10-4v4M7 13v3m10-3v3M4 16h6m4 0h6', mode === 'tree');
+    const textModeButtonEl = createModeButton('Texto', 'M4 6h16M4 10h16M4 14h12M4 18h12', mode === 'text');
+    treeModeButtonEl.addEventListener('click', () => {
+        closeModeDropdown();
+        if (mode !== 'tree') {
+            onBeforeAction();
+            onModeChange('tree');
+        }
+    });
+    textModeButtonEl.addEventListener('click', () => {
+        closeModeDropdown();
+        if (mode !== 'text') {
+            onBeforeAction();
+            onModeChange('text');
+        }
+    });
+    const separatorEl = document.createElement('div');
+    separatorEl.className = 'editor-mode-separator';
+    separatorEl.setAttribute('role', 'separator');
+    const returnButtonEl = createButton('Volver', 'Volver a introducir oración');
+    returnButtonEl.className = 'editor-return-button';
+    returnButtonEl.prepend(createIcon('M19 12H5m0 0 6 6m-6-6 6-6', 'editor-mode-icon'));
+    returnButtonEl.addEventListener('click', () => {
+        closeModeDropdown();
         onBeforeAction();
         onReturnToSentenceScreen();
     });
-    const modeSelectorEl = document.createElement('div');
-    modeSelectorEl.className = 'editor-mode-selector';
-    modeSelectorEl.setAttribute('role', 'group');
-    modeSelectorEl.setAttribute('aria-label', 'Modo de edición');
-    const treeModeButtonEl = createButton('Árbol', 'Cambiar al editor de árbol');
-    const textModeButtonEl = createButton('Texto', 'Cambiar al editor de texto');
-    const guidedModeButtonEl = createButton('Guiado', 'Cambiar al modo guiado');
-    treeModeButtonEl.setAttribute('aria-pressed', String(mode === 'tree'));
-    textModeButtonEl.setAttribute('aria-pressed', String(mode === 'text'));
-    guidedModeButtonEl.setAttribute('aria-pressed', String(mode === 'guided'));
-    treeModeButtonEl.classList.toggle('is-active', mode === 'tree');
-    textModeButtonEl.classList.toggle('is-active', mode === 'text');
-    guidedModeButtonEl.classList.toggle('is-active', mode === 'guided');
-    treeModeButtonEl.addEventListener('click', () => {
-        onBeforeAction();
-        onModeChange('tree');
+    modeDropdownEl.append(treeModeButtonEl, textModeButtonEl, separatorEl, returnButtonEl);
+    modeMenuButtonEl.addEventListener('click', () => {
+        const isOpen = modeMenuButtonEl.getAttribute('aria-expanded') === 'true';
+        setModeDropdownOpen(!isOpen);
     });
-    textModeButtonEl.addEventListener('click', () => {
-        onBeforeAction();
-        onModeChange('text');
+    interfaceContainerEl.addEventListener('click', (event) => {
+        if (!modeSelectorEl.contains(event.target))
+            setModeDropdownOpen(false);
     });
-    guidedModeButtonEl.addEventListener('click', () => {
-        onBeforeAction();
-        onModeChange('guided');
+    interfaceContainerEl.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && modeMenuButtonEl.getAttribute('aria-expanded') === 'true') {
+            event.preventDefault();
+            setModeDropdownOpen(false);
+            modeMenuButtonEl.focus();
+        }
     });
-    modeSelectorEl.replaceChildren(treeModeButtonEl, textModeButtonEl, guidedModeButtonEl);
+    modeSelectorEl.append(modeMenuButtonEl, modeDropdownEl);
+    function setModeDropdownOpen(isOpen) {
+        modeDropdownEl.hidden = !isOpen;
+        modeMenuButtonEl.setAttribute('aria-expanded', String(isOpen));
+    }
+    function closeModeDropdown() {
+        setModeDropdownOpen(false);
+    }
     const zoomControlsEl = document.createElement('div');
     zoomControlsEl.className = 'editor-floating-panel editor-zoom-controls';
     const zoomOutButtonEl = createButton('−', 'Reducir zoom');
@@ -50,7 +82,7 @@ export function createEditorInterface(onReturnToSentenceScreen, onModeChange, mo
     rootContainerEl.id = 'editor-root-container';
     const guidedPanelEl = document.createElement('section');
     guidedPanelEl.className = 'guided-panel';
-    guidedPanelEl.hidden = mode !== 'guided';
+    guidedPanelEl.hidden = true;
     guidedPanelEl.setAttribute('aria-live', 'polite');
     guidedPanelEl.setAttribute('aria-label', 'Análisis guiado');
     const historyPanelEl = document.createElement('div');
@@ -67,7 +99,7 @@ export function createEditorInterface(onReturnToSentenceScreen, onModeChange, mo
     redoButtonEl.addEventListener('click', onBeforeAction);
     historyControlsEl.replaceChildren(undoButtonEl, redoButtonEl);
     historyPanelEl.replaceChildren(notificationEl, historyControlsEl);
-    interfaceContainerEl.replaceChildren(homeButtonEl, modeSelectorEl, zoomControlsEl, textControlsEl, guidedPanelEl, rootContainerEl, historyPanelEl);
+    interfaceContainerEl.replaceChildren(modeSelectorEl, zoomControlsEl, textControlsEl, guidedPanelEl, rootContainerEl, historyPanelEl);
     return {
         interfaceContainerEl,
         rootContainerEl,
@@ -88,5 +120,26 @@ function createButton(text, label) {
     buttonEl.title = label;
     buttonEl.setAttribute('aria-label', label);
     return buttonEl;
+}
+function createModeButton(label, iconPath, isActive) {
+    const buttonEl = createButton(label, `Cambiar al editor de ${label.toLowerCase()}`);
+    buttonEl.className = 'editor-mode-option';
+    buttonEl.setAttribute('aria-pressed', String(isActive));
+    const labelEl = document.createElement('span');
+    labelEl.textContent = label;
+    const checkEl = createIcon('M5 12l4 4L19 6', 'editor-mode-check');
+    buttonEl.replaceChildren(createIcon(iconPath, 'editor-mode-icon'), labelEl, checkEl);
+    return buttonEl;
+}
+function createIcon(path, className) {
+    const iconEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    iconEl.setAttribute('viewBox', '0 0 24 24');
+    iconEl.setAttribute('class', className);
+    iconEl.setAttribute('aria-hidden', 'true');
+    iconEl.setAttribute('focusable', 'false');
+    const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    pathEl.setAttribute('d', path);
+    iconEl.appendChild(pathEl);
+    return iconEl;
 }
 //# sourceMappingURL=editor-screen.js.map
