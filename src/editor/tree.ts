@@ -424,7 +424,7 @@ export class SyntaxTree {
         if (notChanged) return false;
 
         if ((edge === 'start' && token > node.endToken) || (edge === 'end' && token < node.startToken)) {
-            return 'The resized node must contain at least one token';
+            return 'El nodo redimensionado debe contener al menos un token';
         }
 
         const madeBigger = (edge === 'start' && token < node.startToken) || (edge === 'end' && token > node.endToken);
@@ -438,7 +438,7 @@ export class SyntaxTree {
     private resizeNodeToBigger(node: SyntaxNode, token: number, edge: 'start' | 'end'): boolean | string /* true if modified, or an error message */ {
         const parent = this.getParentNode(node.id);
         const parentInRange = (edge === 'start') ? (parent.startToken <= token) : (parent.endToken >= token);
-        if (!parentInRange) return 'The resized node cannot extend beyond its parent';
+        if (!parentInRange) return 'El nodo no puede extenderse más allá de su padre';
 
         const siblings = parent.contents;
         const nodeIndex = siblings.indexOf(node);
@@ -452,7 +452,7 @@ export class SyntaxTree {
                 if (siblingEnd < token) break;
 
                 if (sibling.type === 'box' && sibling.startToken < token) {
-                    return 'The resize cannot cross the middle of a sibling node';
+                    return 'El borde no puede atravesar el interior de un nodo hermano';
                 }
                 coveredSiblings.unshift(sibling);
             }
@@ -467,7 +467,7 @@ export class SyntaxTree {
                 if (siblingStart > token) break;
 
                 if (sibling.type === 'box' && sibling.endToken > token) {
-                    return 'The resize cannot cross the middle of a sibling node';
+                    return 'El borde no puede atravesar el interior de un nodo hermano';
                 }
                 coveredSiblings.push(sibling);
             }

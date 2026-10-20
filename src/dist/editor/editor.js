@@ -11,6 +11,7 @@ export class SyntaxEditor {
         this.autoScrollAnimationFrame = null;
         this.lastPointerX = 0;
         this.lastPointerY = 0;
+        this.resizeDrag = null;
         this.state = {
             selectedNodeId: null,
             editing: {
@@ -29,6 +30,10 @@ export class SyntaxEditor {
             }
         };
         this.onPointerCancel = (event) => {
+            if (this.resizeDrag?.pointerId === event.pointerId) {
+                this.cancelResizeDrag();
+                return;
+            }
             if (!this.state.pointer.isDragging)
                 return;
             if (this.appEl.hasPointerCapture(event.pointerId)) {
@@ -49,6 +54,11 @@ export class SyntaxEditor {
                     return;
                 }
                 this.handleEditingFieldNavigation(event);
+                return;
+            }
+            if (event.key === 'Escape' && this.resizeDrag !== null) {
+                event.preventDefault();
+                this.cancelResizeDrag();
                 return;
             }
             if (this.handleModeKeyDown(event))
@@ -90,6 +100,24 @@ export class SyntaxEditor {
             }
         };
         this.onPointerDown = (event) => {
+            if (event.target instanceof Element) {
+                const handle = event.target.closest('.resize-handle');
+                const syntaxEl = handle?.closest('syntax-node');
+                if (handle && syntaxEl) {
+                    const nodeId = syntaxEl.nodeId;
+                    const node = this.tree.getNode(nodeId);
+                    const edge = handle.classList.contains('start') ? 'start' : 'end';
+                    if (node.type === 'box'
+                        && this.state.selectedNodeId === nodeId
+                        && !this.state.editing.isEditing
+                        && this.canResizeNode(nodeId)) {
+                        event.preventDefault();
+                        this.resizeDrag = { nodeId, edge, pointerId: event.pointerId };
+                        this.appEl.setPointerCapture(event.pointerId);
+                    }
+                    return;
+                }
+            }
             const clicked = this.getClickedNode(event);
             if (clicked.didClickInput)
                 return;
@@ -121,6 +149,8 @@ export class SyntaxEditor {
         };
         this.onPointerMove = (event) => {
             var _a;
+            if (this.resizeDrag !== null)
+                return;
             if (!this.state.pointer.isDragging)
                 return;
             const MIN_PIXELS_MOVED = 20;
@@ -145,6 +175,10 @@ export class SyntaxEditor {
             }
         };
         this.onPointerUp = (event) => {
+            if (this.resizeDrag?.pointerId === event.pointerId) {
+                this.finishResizeDrag(event);
+                return;
+            }
             if (!this.state.pointer.isDragging)
                 return;
             if (!this.state.pointer.didMove) {
@@ -233,6 +267,9 @@ export class SyntaxEditor {
     canInteractWithNode(_nodeId) {
         return true;
     }
+    canResizeNode(nodeId) {
+        return this.canInteractWithNode(nodeId);
+    }
     hideSelectionActionsForNode(_nodeId) {
         return false;
     }
@@ -315,6 +352,62 @@ export class SyntaxEditor {
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
         return { x, y };
+    }
+    finishResizeDrag(event) {
+        const resize = this.resizeDrag;
+        if (!resize)
+            return;
+        this.resizeDrag = null;
+        if (this.appEl.hasPointerCapture(event.pointerId)) {
+            this.appEl.releasePointerCapture(event.pointerId);
+        }
+        const token = this.getWordTokenAtClientX(event.clientX);
+        if (token === null) {
+            this.showNotification('No se pudo determinar la palabra de destino');
+            return;
+        }
+        const previousJSON = this.snapshot();
+        const result = this.tree.resizeNode(resize.nodeId, token, resize.edge);
+        if (typeof result === 'string') {
+            this.showNotification(result);
+            return;
+        }
+        if (!result) {
+            this.showNotification('La caja no cambió');
+            return;
+        }
+        this.renderTree();
+        this.registerTreeChange(previousJSON);
+        this.showNotification('Caja redimensionada');
+    }
+    cancelResizeDrag() {
+        const resize = this.resizeDrag;
+        if (!resize)
+            return;
+        this.resizeDrag = null;
+        if (this.appEl.hasPointerCapture(resize.pointerId)) {
+            this.appEl.releasePointerCapture(resize.pointerId);
+        }
+    }
+    getWordTokenAtClientX(clientX) {
+        const root = this.tree.getJSON();
+        const words = this.tree.getWordsFromTokenRange(root.startToken, root.endToken);
+        if (words.length === 0)
+            return null;
+        let nearestToken = null;
+        let nearestDistance = Number.POSITIVE_INFINITY;
+        for (const word of words) {
+            const wordEl = this.elementMapping.get(word.id);
+            if (!wordEl)
+                continue;
+            const rect = wordEl.getBoundingClientRect();
+            const distance = Math.abs(clientX - (rect.left + rect.right) / 2);
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                nearestToken = word.token;
+            }
+        }
+        return nearestToken;
     }
     clearPointerState() {
         this.state.pointer = {
@@ -400,16 +493,17 @@ export class SyntaxEditor {
             this.selectionActionsEl.remove();
             return;
         }
-        if (this.hideSelectionActionsForNode(id)) {
-            this.selectionActionsEl.remove();
-            return;
-        }
         const selectedNode = this.tree.getNode(id);
-        if (selectedNode.type === 'word' || this.state.editing.isEditing) {
+        if (selectedNode.type === 'word') {
             this.selectionActionsEl.remove();
             return;
         }
         const selectedElement = this.elementMapping.get(id);
+        selectedElement.classList.toggle('resize-disabled', this.state.editing.isEditing || !this.canResizeNode(id));
+        if (this.state.editing.isEditing || this.hideSelectionActionsForNode(id)) {
+            this.selectionActionsEl.remove();
+            return;
+        }
         selectedElement.appendChild(this.selectionActionsEl);
     }
     showNotification(message, duration = 1800) {
@@ -669,4 +763,6 @@ function sameReducedJSON(a, b) {
 function cloneReducedJSON(json) {
     return JSON.parse(JSON.stringify(json));
 }
+// TODO: Arrow keys to navigate between word nodes
+// TODO: On Box create, scroll to the middle of it so text field is visible in big sentences
 //# sourceMappingURL=editor.js.map

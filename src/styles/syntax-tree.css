@@ -60,8 +60,49 @@ word-node:not(.selected) > .word-node:not(.editing):hover > .word {
 }
 
 .line {
+    position: relative;
     border-top: 2.4px solid #424242;
     margin: 0.5rem 0.8rem 0;
+}
+
+.resize-handle {
+    display: none;
+    position: absolute;
+    top: -0.45rem;
+    width: 0.8rem;
+    height: 0.8rem;
+    border: 2px solid #a66c26;
+    border-radius: 50%;
+    padding: 0;
+    background: #ffffff;
+    cursor: ew-resize;
+    touch-action: none;
+    z-index: 3;
+}
+
+.resize-handle.start {
+    left: -0.4rem;
+}
+
+.resize-handle.end {
+    right: -0.4rem;
+}
+
+.selected > .syntax-node > .line > .resize-handle {
+    display: block;
+}
+
+.selected.resize-disabled > .syntax-node > .line > .resize-handle {
+    display: none;
+}
+
+.resize-handle:hover {
+    background: #f1a03d;
+}
+
+.resize-handle:focus-visible {
+    outline: 2px solid rgba(31, 122, 140, 0.45);
+    outline-offset: 2px;
 }
 
 syntax-node:hover:not(.selected):not(:has(.children syntax-node:hover, .children word-node:hover, .analysis.editing)) > .syntax-node > .line {

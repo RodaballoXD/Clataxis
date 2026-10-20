@@ -81,6 +81,12 @@ export class GuidedSyntaxEditor extends SyntaxEditor {
             && super.canDeleteNode(nodeId);
     }
 
+    protected override canResizeNode(nodeId: number): boolean {
+        return this.guidedState.stage !== 'choose-target'
+            && !this.isTargetNode(nodeId)
+            && super.canResizeNode(nodeId);
+    }
+
     protected override canInsertBoxAtRange(startToken: number, endToken: number): boolean {
         return this.guidedState.stage !== 'choose-target'
             && super.canInsertBoxAtRange(startToken, endToken);

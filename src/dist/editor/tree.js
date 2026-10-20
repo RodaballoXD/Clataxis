@@ -190,6 +190,17 @@ export class SyntaxTree {
             return newPart;
         }
     }
+    promoteChildren(id) {
+        const node = this.getNode(id);
+        if (node.type === 'word') {
+            throw new Error('Cannot delete word node');
+        }
+        const children = node.contents;
+        const parent = this.getParentNode(id);
+        const nodeIndexInParent = parent.contents.indexOf(node);
+        parent.contents.splice(nodeIndexInParent, 1, ...children);
+        this.mapNodes();
+    }
     deleteNode(id) {
         const node = this.getNode(id);
         if (node.type === 'word')
@@ -211,17 +222,6 @@ export class SyntaxTree {
             }
             return words;
         }
-    }
-    promoteChildren(id) {
-        const node = this.getNode(id);
-        if (node.type === 'word') {
-            throw new Error('Cannot delete word node');
-        }
-        const children = node.contents;
-        const parent = this.getParentNode(id);
-        const nodeIndexInParent = parent.contents.indexOf(node);
-        parent.contents.splice(nodeIndexInParent, 1, ...children);
-        this.mapNodes();
     }
     insertBoxAtRange(start, end) {
         const root = this.tree;
@@ -358,6 +358,123 @@ export class SyntaxTree {
             foundInRange.push(...this.getWordsFromTokenRange(startToken, endToken, child));
         }
         return foundInRange;
+    }
+    resizeNode(id, token, edge) {
+        const node = this.getNode(id);
+        if (node.type === 'word')
+            throw new Error('Cannot resize word node');
+        const notChanged = (edge === 'start' && token === node.startToken) || (edge === 'end' && token === node.endToken);
+        if (notChanged)
+            return false;
+        if ((edge === 'start' && token > node.endToken) || (edge === 'end' && token < node.startToken)) {
+            return 'El nodo redimensionado debe contener al menos un token';
+        }
+        const madeBigger = (edge === 'start' && token < node.startToken) || (edge === 'end' && token > node.endToken);
+        if (madeBigger) {
+            return this.resizeNodeToBigger(node, token, edge);
+        }
+        this.resizeNodeToSmaller(node, token, edge);
+        return true;
+    }
+    resizeNodeToBigger(node, token, edge) {
+        const parent = this.getParentNode(node.id);
+        const parentInRange = (edge === 'start') ? (parent.startToken <= token) : (parent.endToken >= token);
+        if (!parentInRange)
+            return 'El nodo no puede extenderse más allá de su padre';
+        const siblings = parent.contents;
+        const nodeIndex = siblings.indexOf(node);
+        if (nodeIndex < 0)
+            throw new Error(`Node ${node.id} is not in its parent's contents`);
+        const coveredSiblings = [];
+        if (edge === 'start') {
+            for (let index = nodeIndex - 1; index >= 0; index--) {
+                const sibling = siblings[index];
+                const siblingEnd = sibling.type === 'word' ? sibling.token : sibling.endToken;
+                if (siblingEnd < token)
+                    break;
+                if (sibling.type === 'box' && sibling.startToken < token) {
+                    return 'El borde no puede atravesar el interior de un nodo hermano';
+                }
+                coveredSiblings.unshift(sibling);
+            }
+            node.contents = [...coveredSiblings, ...node.contents];
+            node.startToken = token;
+            siblings.splice(nodeIndex - coveredSiblings.length, coveredSiblings.length + 1, node);
+        }
+        else {
+            for (let index = nodeIndex + 1; index < siblings.length; index++) {
+                const sibling = siblings[index];
+                const siblingStart = sibling.type === 'word' ? sibling.token : sibling.startToken;
+                if (siblingStart > token)
+                    break;
+                if (sibling.type === 'box' && sibling.endToken > token) {
+                    return 'El borde no puede atravesar el interior de un nodo hermano';
+                }
+                coveredSiblings.push(sibling);
+            }
+            node.contents = [...node.contents, ...coveredSiblings];
+            node.endToken = token;
+            siblings.splice(nodeIndex, coveredSiblings.length + 1, node);
+        }
+        this.mapNodes();
+        return true;
+    }
+    resizeNodeToSmaller(node, token, edge) {
+        const outside = shrinkNodeToRange(node, token, edge);
+        const parent = this.getParentNode(node.id);
+        const nodeIndexInParent = parent.contents.indexOf(node);
+        const newContents = edge === 'start' ? [...outside, node] : [node, ...outside];
+        parent.contents.splice(nodeIndexInParent, 1, ...newContents);
+        this.mapNodes();
+        function shrinkNodeToRange(node, token, edge) {
+            const { outside, inside } = getOutsideInside(node, token, edge);
+            node.contents = inside;
+            if (edge === 'start') {
+                node.startToken = token;
+            }
+            else {
+                node.endToken = token;
+            }
+            const partiallyInside = getPartiallyInside(inside, token, edge);
+            if (!partiallyInside)
+                return outside;
+            const nestedOutside = shrinkNodeToRange(partiallyInside, token, edge);
+            return edge === 'start' ? [...outside, ...nestedOutside] : [...nestedOutside, ...outside];
+        }
+        function getOutsideInside(node, token, edge) {
+            const children = node.contents;
+            const outside = [];
+            const inside = [];
+            for (const child of children) {
+                let isOut;
+                if (edge === 'start') {
+                    isOut = (child.type === 'word') ? (child.token < token) : (child.endToken < token);
+                }
+                else {
+                    isOut = (child.type === 'word') ? (child.token > token) : (child.startToken > token);
+                }
+                if (isOut) {
+                    outside.push(child);
+                }
+                else {
+                    inside.push(child);
+                }
+            }
+            return { outside, inside };
+        }
+        function getPartiallyInside(children, token, edge) {
+            for (const child of children) {
+                if (child.type === 'word')
+                    continue;
+                const isPartiallyInside = edge === 'start'
+                    ? child.startToken < token && child.endToken >= token
+                    : child.startToken <= token && child.endToken > token;
+                if (isPartiallyInside) {
+                    return child;
+                }
+            }
+            return null;
+        }
     }
 }
 export function sentenceToReducedJSON(sentence) {
