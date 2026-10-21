@@ -3,6 +3,7 @@ import type { EditorInterfaceEls } from "./editor-screen.js";
 import type { AnalysisData, NodeId, ReducedJSON, SyntaxNode, WordNode } from "./tree.js";
 import { SyntaxTree } from "./tree.js";
 import { FieldAutocomplete } from "./autocomplete.js";
+import { createIcon } from "../shared/icons.js";
 
 const ZOOM_STEPS = [0.25, 0.3, 0.4, 0.5, 0.6, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4];
 
@@ -193,8 +194,9 @@ export class SyntaxEditor {
 
         const deleteButtonEl = document.createElement('button');
         deleteButtonEl.type = 'button';
-        deleteButtonEl.textContent = '🗑';
         deleteButtonEl.title = 'Eliminar caja (Suprimir)';
+        deleteButtonEl.setAttribute('aria-label', 'Eliminar caja (Suprimir)');
+        deleteButtonEl.appendChild(createIcon('M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13 M10 11v5 M14 11v5', 'node-action-icon'));
         deleteButtonEl.addEventListener('click', (event) => {
             event.stopPropagation();
             this.deleteNode();
@@ -202,8 +204,9 @@ export class SyntaxEditor {
 
         const promoteButtonEl = document.createElement('button');
         promoteButtonEl.type = 'button';
-        promoteButtonEl.textContent = '⤴';
         promoteButtonEl.title = 'Quitar caja (Retroceso)';
+        promoteButtonEl.setAttribute('aria-label', 'Quitar caja (Retroceso)');
+        promoteButtonEl.appendChild(createIcon('M5 4h14v16H5z M9 12h6', 'node-action-icon'));
         promoteButtonEl.addEventListener('click', (event) => {
             event.stopPropagation();
             this.promoteChildren();

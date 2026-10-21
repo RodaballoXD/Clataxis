@@ -1,3 +1,4 @@
+import { createIcon } from "../shared/icons.js";
 export function createEditorInterface(onReturnToSentenceScreen, onModeChange, mode, onBeforeAction) {
     const interfaceContainerEl = document.createElement('div');
     interfaceContainerEl.id = 'editor-container';
@@ -70,8 +71,10 @@ export function createEditorInterface(onReturnToSentenceScreen, onModeChange, mo
     }
     const zoomControlsEl = document.createElement('div');
     zoomControlsEl.className = 'editor-floating-panel editor-zoom-controls';
-    const zoomOutButtonEl = createButton('−', 'Reducir zoom');
-    const zoomInButtonEl = createButton('+', 'Aumentar zoom');
+    const zoomOutButtonEl = createButton('', 'Reducir zoom');
+    zoomOutButtonEl.appendChild(createIcon('M10.5 4.5a6 6 0 1 0 0 12a6 6 0 0 0 0-12 M15 15l5 5 M7.5 10.5h6', 'editor-action-icon'));
+    const zoomInButtonEl = createButton('', 'Aumentar zoom');
+    zoomInButtonEl.appendChild(createIcon('M10.5 4.5a6 6 0 1 0 0 12a6 6 0 0 0 0-12 M15 15l5 5 M10.5 7.5v6 M7.5 10.5h6', 'editor-action-icon'));
     zoomControlsEl.replaceChildren(zoomOutButtonEl, zoomInButtonEl);
     const textControlsEl = document.createElement('div');
     textControlsEl.className = 'editor-floating-panel editor-text-controls';
@@ -93,8 +96,10 @@ export function createEditorInterface(onReturnToSentenceScreen, onModeChange, mo
     notificationEl.setAttribute('aria-live', 'polite');
     const historyControlsEl = document.createElement('div');
     historyControlsEl.className = 'editor-floating-panel editor-history-controls';
-    const undoButtonEl = createButton('↶', 'Deshacer (Ctrl+z)');
-    const redoButtonEl = createButton('↷', 'Rehacer (Ctrl+y)');
+    const undoButtonEl = createButton('', 'Deshacer (Ctrl+z)');
+    undoButtonEl.appendChild(createIcon('M9 14l-4-4 4-4 M5 10h8a6 6 0 0 1 6 6v2', 'editor-action-icon'));
+    const redoButtonEl = createButton('', 'Rehacer (Ctrl+y)');
+    redoButtonEl.appendChild(createIcon('M15 6l4 4-4 4 M19 10h-8a6 6 0 0 0-6 6v2', 'editor-action-icon'));
     undoButtonEl.addEventListener('click', onBeforeAction);
     redoButtonEl.addEventListener('click', onBeforeAction);
     historyControlsEl.replaceChildren(undoButtonEl, redoButtonEl);
@@ -130,16 +135,5 @@ function createModeButton(label, iconPath, isActive) {
     const checkEl = createIcon('M5 12l4 4L19 6', 'editor-mode-check');
     buttonEl.replaceChildren(createIcon(iconPath, 'editor-mode-icon'), labelEl, checkEl);
     return buttonEl;
-}
-function createIcon(path, className) {
-    const iconEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    iconEl.setAttribute('viewBox', '0 0 24 24');
-    iconEl.setAttribute('class', className);
-    iconEl.setAttribute('aria-hidden', 'true');
-    iconEl.setAttribute('focusable', 'false');
-    const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    pathEl.setAttribute('d', path);
-    iconEl.appendChild(pathEl);
-    return iconEl;
 }
 //# sourceMappingURL=editor-screen.js.map

@@ -1,5 +1,6 @@
 #editor-container {
     min-height: 0;
+    height: 100%;
 }
 
 .editor-screen {
@@ -100,6 +101,16 @@
 
 .editor-history-controls > button {
     font-size: 1.2rem;
+}
+
+.editor-action-icon {
+    width: 1.15rem;
+    height: 1.15rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
 }
 
 .editor-screen[data-mode="text"] #editor-root-container {

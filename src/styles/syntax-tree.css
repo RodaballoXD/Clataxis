@@ -15,17 +15,17 @@ root-node {
     border: none;
     background: none;
     font-weight: 670;
-    font-size: 1.2rem;
+    font-size: 1.6rem;
     field-sizing: content;
     min-width: 2.5rem;
-    height: 1.1rem;
+    height: 1.7rem;
     margin-top: 0.35rem;
     
 }
 
 #editor-container .editing > input:placeholder-shown {
     opacity: 0.5;
-    font-size: 1rem;
+    font-size: 1.2rem;
 }
 
 syntax-node {
@@ -78,6 +78,12 @@ word-node:not(.selected) > .word-node:not(.editing):hover > .word {
     cursor: ew-resize;
     touch-action: none;
     z-index: 3;
+}
+
+.resize-handle::before {
+    content: "";
+    position: absolute;
+    inset: -0.975rem;
 }
 
 .resize-handle.start {
@@ -155,6 +161,16 @@ syntax-node:hover:not(.selected):not(:has(.children syntax-node:hover, .children
     cursor: pointer;
 }
 
+.node-action-icon {
+    width: 1rem;
+    height: 1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+}
+
 .node-action-buttons > button:hover {
     background: #f7f9fb;
 }
@@ -183,8 +199,8 @@ syntax-node:hover:not(.selected):not(:has(.children syntax-node:hover, .children
     display: flex;
     justify-content: center;
     font-weight: 670;
-    font-size: 1.2rem;
-    min-height: 1.6rem;
+    font-size: 1.6rem;
+    min-height: 2.4rem;
 }
 
 .slash {
@@ -219,10 +235,10 @@ syntax-node:hover:not(.selected):not(:has(.children syntax-node:hover, .children
 }
 
 .word-comment, .word-comment-input {
-    min-height: 1.6rem;
+    min-height: 2.4rem;
     font-weight: 670;
     text-align: center;
-    font-size: 1.2rem;
+    font-size: 1.6rem;
     color: #5b5b5b;
 }
 
