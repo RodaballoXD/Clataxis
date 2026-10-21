@@ -22,6 +22,7 @@ export class SyntaxEditor {
     private lastPointerX = 0;
     private lastPointerY = 0;
     private resizeDrag: ResizeDragData | null = null;
+    private treePreview: TreePreviewData | null = null;
 
     state: EditorState = {
         selectedNodeId: null,
@@ -69,6 +70,14 @@ export class SyntaxEditor {
     }
 
     destroy() {
+        this.stopAutoScroll();
+        if (this.resizeDrag && this.appEl.hasPointerCapture(this.resizeDrag.pointerId)) {
+            this.appEl.releasePointerCapture(this.resizeDrag.pointerId);
+        }
+        if (this.state.pointer.pointerId !== null && this.appEl.hasPointerCapture(this.state.pointer.pointerId)) {
+            this.appEl.releasePointerCapture(this.state.pointer.pointerId);
+        }
+        this.clearTreePreview(false);
         this.appEl.removeEventListener('pointerdown', this.onPointerDown);
         this.appEl.removeEventListener('pointermove', this.onPointerMove);
         this.appEl.removeEventListener('pointerup', this.onPointerUp);
@@ -218,7 +227,8 @@ export class SyntaxEditor {
         }
         this.clearPointerState();
         this.clearDragHighlight();
-        this.startAutoScroll();
+        this.stopAutoScroll();
+        this.clearTreePreview();
     };
 
     private onKeyDown = (event: KeyboardEvent) => {
@@ -275,9 +285,15 @@ export class SyntaxEditor {
         }
 
         if (event.key === 'Escape' && this.state.pointer.isDragging) {
+            event.preventDefault();
+            if (this.state.pointer.pointerId !== null
+                && this.appEl.hasPointerCapture(this.state.pointer.pointerId)) {
+                this.appEl.releasePointerCapture(this.state.pointer.pointerId);
+            }
             this.clearPointerState();
             this.clearDragHighlight();
             this.stopAutoScroll();
+            this.clearTreePreview();
             return;
         }
     };
@@ -295,8 +311,12 @@ export class SyntaxEditor {
                     && !this.state.editing.isEditing
                     && this.canResizeNode(nodeId)) {
                     event.preventDefault();
-                    this.resizeDrag = { nodeId, edge, pointerId: event.pointerId };
+                    this.resizeDrag = { nodeId, edge, pointerId: event.pointerId, token: null };
+                    this.lastPointerX = event.clientX;
+                    this.lastPointerY = event.clientY;
                     this.appEl.setPointerCapture(event.pointerId);
+                    this.updateResizePreview(event.clientX);
+                    this.startAutoScroll();
                 }
                 return;
             }
@@ -334,15 +354,19 @@ export class SyntaxEditor {
     }
 
     private onPointerMove = (event: PointerEvent) => {
-        if (this.resizeDrag !== null) return;
+        if (this.resizeDrag !== null) {
+            this.lastPointerX = event.clientX;
+            this.lastPointerY = event.clientY;
+            this.updateResizePreview(event.clientX);
+            return;
+        }
         if (!this.state.pointer.isDragging) return;
 
         const MIN_PIXELS_MOVED = 20;
         
         const currentPos = this.getMousePosition(event);
-        const rect = this.appEl.getBoundingClientRect();
-        this.lastPointerX = event.clientX - rect.left;
-        this.lastPointerY = event.clientY - rect.top;
+        this.lastPointerX = event.clientX;
+        this.lastPointerY = event.clientY;
         const didMove = (distance(this.state.pointer.startMousePosition, currentPos) > MIN_PIXELS_MOVED);
         const didJustStartMoving = (didMove && !this.state.pointer.didMove);
         this.state.pointer.didMove ||= didMove;
@@ -380,7 +404,10 @@ export class SyntaxEditor {
 
         if (this.state.editing.isEditing) this.finishEditing();
 
-        this.insertBoxAtRange(this.state.pointer.startWordToken, this.state.pointer.endWordToken);
+        this.lastPointerX = event.clientX;
+        this.lastPointerY = event.clientY;
+        this.updateDragSelection(event.clientX, true);
+        this.commitTreePreview('create');
         this.clearPointerState();
         this.clearDragHighlight();
         this.stopAutoScroll();
@@ -413,31 +440,14 @@ export class SyntaxEditor {
         const resize = this.resizeDrag;
         if (!resize) return;
 
+        this.updateResizePreview(event.clientX);
         this.resizeDrag = null;
         if (this.appEl.hasPointerCapture(event.pointerId)) {
             this.appEl.releasePointerCapture(event.pointerId);
         }
 
-        const token = this.getWordTokenAtClientX(event.clientX);
-        if (token === null) {
-            this.showNotification('No se pudo determinar la palabra de destino');
-            return;
-        }
-
-        const previousJSON = this.snapshot();
-        const result = this.tree.resizeNode(resize.nodeId, token, resize.edge);
-        if (typeof result === 'string') {
-            this.showNotification(result);
-            return;
-        }
-        if (!result) {
-            this.showNotification('La caja no cambió');
-            return;
-        }
-
-        this.renderTree();
-        this.registerTreeChange(previousJSON);
-        this.showNotification('Caja redimensionada');
+        this.stopAutoScroll();
+        this.commitTreePreview('resize');
     }
 
     private cancelResizeDrag() {
@@ -448,6 +458,8 @@ export class SyntaxEditor {
         if (this.appEl.hasPointerCapture(resize.pointerId)) {
             this.appEl.releasePointerCapture(resize.pointerId);
         }
+        this.stopAutoScroll();
+        this.clearTreePreview();
     }
 
     private getWordTokenAtClientX(clientX: number): number | null {
@@ -470,6 +482,135 @@ export class SyntaxEditor {
         return nearestToken;
     }
 
+    private updateResizePreview(clientX: number) {
+        const resize = this.resizeDrag;
+        if (!resize) return;
+
+        const token = this.getWordTokenAtClientX(clientX);
+        if (token === null || token === resize.token) return;
+        resize.token = token;
+        this.previewResize(resize.nodeId, token, resize.edge);
+    }
+
+    private previewBoxAtRange(startToken: number, endToken: number) {
+        const key = `create:${startToken}:${endToken}`;
+        if (this.treePreview?.key === key) return;
+
+        const previewTree = this.tree.clone();
+        if (!this.canInsertBoxAtRange(startToken, endToken)) {
+            this.setTreePreview({
+                key,
+                operation: 'create',
+                tree: previewTree,
+                valid: false,
+                changed: false,
+                message: 'No se puede crear una caja en este rango'
+            });
+            return;
+        }
+
+        const result = previewTree.insertBoxAtRange(startToken, endToken);
+        if (result.status === 'error') {
+            this.setTreePreview({
+                key,
+                operation: 'create',
+                tree: previewTree,
+                valid: false,
+                changed: false,
+                message: 'No se pudo crear la caja'
+            });
+            return;
+        }
+        this.setTreePreview({
+            key,
+            operation: 'create',
+            tree: previewTree,
+            valid: true,
+            changed: true,
+            newNodeId: result.newNodeId,
+            targetNodeId: result.newNodeId
+        });
+    }
+
+    private previewResize(nodeId: number, token: number, edge: 'start' | 'end') {
+        const key = `resize:${nodeId}:${edge}:${token}`;
+        if (this.treePreview?.key === key) return;
+
+        const previewTree = this.tree.clone();
+        const result = previewTree.resizeNode(nodeId, token, edge);
+        this.setTreePreview({
+            key,
+            operation: 'resize',
+            tree: previewTree,
+            valid: typeof result !== 'string',
+            changed: result === true,
+            message: typeof result === 'string' ? result : undefined,
+            targetNodeId: nodeId
+        });
+    }
+
+    private setTreePreview(preview: TreePreviewData) {
+        this.treePreview = preview;
+        this.elementMapping = this.rootEl.build(preview.tree.getJSON());
+        this.rootEl.classList.add('tree-preview');
+
+        if (preview.targetNodeId !== undefined) {
+            const target = this.elementMapping.get(preview.targetNodeId);
+            target?.classList.add('tree-preview-target');
+            if (!preview.valid) target?.classList.add('tree-preview-invalid');
+        }
+
+        const selectedId = this.state.selectedNodeId;
+        if (selectedId !== null) {
+            const selected = this.elementMapping.get(selectedId) as EditableNodeEl | undefined;
+            selected?.select();
+        }
+        if (this.state.pointer.isDragging) this.updateDragHighlight();
+    }
+
+    private clearTreePreview(renderTree = true) {
+        if (!this.treePreview) return;
+        this.treePreview = null;
+        this.rootEl.classList.remove('tree-preview');
+        if (renderTree) this.renderTree();
+    }
+
+    private commitTreePreview(operation: TreePreviewOperation) {
+        const preview = this.treePreview;
+        if (!preview || preview.operation !== operation) {
+            this.clearTreePreview();
+            this.showNotification(operation === 'create'
+                ? 'No se pudo crear la caja'
+                : 'No se pudo redimensionar la caja');
+            return;
+        }
+
+        this.treePreview = null;
+        this.rootEl.classList.remove('tree-preview');
+        if (!preview.valid) {
+            this.renderTree();
+            this.showNotification(preview.message ?? 'La operación no es válida');
+            return;
+        }
+        if (!preview.changed) {
+            this.renderTree();
+            this.showNotification('La caja no cambió');
+            return;
+        }
+
+        const previousJSON = this.snapshot();
+        this.tree = preview.tree;
+        if (operation === 'create') {
+            this.state.selectedNodeId = preview.newNodeId ?? null;
+        }
+        this.renderTree();
+        if (operation === 'create' && this.state.selectedNodeId !== null) {
+            this.startEditing();
+        }
+        this.registerTreeChange(previousJSON);
+        this.showNotification(operation === 'create' ? 'Caja creada' : 'Caja redimensionada');
+    }
+
     private clearPointerState() {
         this.state.pointer = {
             isDragging: false,
@@ -481,11 +622,11 @@ export class SyntaxEditor {
         };
     }
 
-    private updateDragSelection(clientX: number, forceHighlightUpdate?: boolean) {
+    private updateDragSelection(clientX: number, forceHighlightUpdate = false, clientY = this.lastPointerY) {
         if (!this.state.pointer.isDragging) return;
         const pointer = this.state.pointer;
 
-        const underPointer = document.elementFromPoint(clientX, this.lastPointerY);
+        const underPointer = document.elementFromPoint(clientX, clientY);
         let endWordToken = pointer.endWordToken as number | null ?? pointer.startWordToken;
 
         if (underPointer) {
@@ -500,6 +641,10 @@ export class SyntaxEditor {
         const didChangeDragged = (pointer.endWordToken !== endWordToken);
         pointer.endWordToken = endWordToken;
         if (didChangeDragged || forceHighlightUpdate) {
+            let startToken = pointer.startWordToken;
+            let endToken = endWordToken;
+            if (startToken > endToken) [startToken, endToken] = [endToken, startToken];
+            this.previewBoxAtRange(startToken, endToken);
             this.updateDragHighlight();
         }
     }
@@ -847,30 +992,11 @@ export class SyntaxEditor {
         this.registerTreeChange(previousJSON);
     }
 
-    private insertBoxAtRange(startToken: number, endToken: number) {
-        if (startToken > endToken) {
-            [endToken, startToken] = [startToken, endToken];
-        }
-        if (!this.canInsertBoxAtRange(startToken, endToken)) return;
-        const previousJSON = this.snapshot();
-        const insertedData = this.tree.insertBoxAtRange(startToken, endToken);
-        if (insertedData.status === 'error') {
-            this.showNotification('No se pudo crear la caja');
-            return;
-        }
-
-        this.renderTree();
-        this.selectNode(insertedData.newNodeId);
-        this.startEditing();
-        this.registerTreeChange(previousJSON);
-        this.showNotification('Caja creada');
-    }
-
     private startAutoScroll() {
         if (this.autoScrollAnimationFrame !== null) return;
 
         const tick = () => {
-            if (!this.state.pointer.didMove) {
+            if (!this.state.pointer.didMove && this.resizeDrag === null) {
                 this.autoScrollAnimationFrame = null;
                 return;
             }
@@ -893,14 +1019,18 @@ export class SyntaxEditor {
 
         let speed = 0;
         if (this.lastPointerX < rect.left + EDGE) {
-            speed = this.lastPointerX - EDGE;
+            speed = this.lastPointerX - (rect.left + EDGE);
         }
         else if (this.lastPointerX > rect.right - EDGE) {
-            speed = EDGE - (rect.right - this.lastPointerX);
+            speed = this.lastPointerX - (rect.right - EDGE);
         }
 
         this.appEl.scrollLeft += speed * 0.5;
-        this.updateDragSelection(this.lastPointerX + rect.left);
+        if (this.resizeDrag !== null) {
+            this.updateResizePreview(this.lastPointerX);
+        } else {
+            this.updateDragSelection(this.lastPointerX, false, this.lastPointerY);
+        }
     }
 }
 
@@ -950,6 +1080,20 @@ interface ResizeDragData {
     nodeId: number;
     edge: 'start' | 'end';
     pointerId: number;
+    token: number | null;
+}
+
+type TreePreviewOperation = 'create' | 'resize';
+
+interface TreePreviewData {
+    key: string;
+    operation: TreePreviewOperation;
+    tree: SyntaxTree;
+    valid: boolean;
+    changed: boolean;
+    message?: string;
+    newNodeId?: number;
+    targetNodeId?: number;
 }
 
 function sameReducedJSON(a: ReducedJSON, b: ReducedJSON): boolean {

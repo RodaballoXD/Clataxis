@@ -105,6 +105,19 @@ word-node:not(.selected) > .word-node:not(.editing):hover > .word {
     outline-offset: 2px;
 }
 
+.tree-preview .resize-handle,
+.tree-preview .node-action-buttons {
+    display: none;
+}
+
+.tree-preview-target > .syntax-node > .line {
+    border-top-style: dashed;
+}
+
+.tree-preview-target.tree-preview-invalid > .syntax-node > .line {
+    border-top-color: #b23b3b;
+}
+
 syntax-node:hover:not(.selected):not(:has(.children syntax-node:hover, .children word-node:hover, .analysis.editing)) > .syntax-node > .line {
     border-color: #1f7a8c;
     box-shadow: 0 0 0 3px rgba(31, 122, 140, 0.08);

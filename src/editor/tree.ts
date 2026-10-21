@@ -123,6 +123,23 @@ export class SyntaxTree {
         return this.tree;
     }
 
+    clone(): SyntaxTree {
+        const clone = new SyntaxTree();
+        clone.tree = {
+            ...this.tree,
+            contents: this.tree.contents.map(cloneNode)
+        };
+        clone.idCounter = this.idCounter;
+        clone.tokenCounter = this.tokenCounter;
+        clone.mapNodes();
+        return clone;
+
+        function cloneNode(node: SyntaxNode | WordNode): SyntaxNode | WordNode {
+            if (node.type === 'word') return { ...node };
+            return { ...node, contents: node.contents.map(cloneNode) };
+        }
+    }
+
     toReducedJSON(): ReducedJSON {
         const contents = this.tree.contents;
         return contents.map(child => this.reduceNode(child));
@@ -419,6 +436,10 @@ export class SyntaxTree {
     resizeNode(id: number, token: number, edge: 'start' | 'end'): boolean | string /* true/false if modified/unchanged, or an error message */ {
         const node = this.getNode(id) as SyntaxNode | WordNode;
         if (node.type === 'word') throw new Error('Cannot resize word node');
+
+        if (!Number.isInteger(token) || !this.getWordsFromTokenRange(token, token).length) {
+            return 'No existe una palabra en esa posición';
+        }
 
         const notChanged = (edge === 'start' && token === node.startToken) || (edge === 'end' && token === node.endToken);
         if (notChanged) return false;
