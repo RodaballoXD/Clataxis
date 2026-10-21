@@ -524,16 +524,21 @@ export class SyntaxEditor {
         if (currentIndex < 0)
             throw new Error("handleEditingFieldNavigation: event.target is not in the list of editing input elements");
         if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-            const caret = event.target.selectionStart ?? 0;
-            const atStart = (caret <= 0);
-            const atEnd = (caret >= (event.target.value.length));
-            if (event.key === 'ArrowLeft' && atStart) {
-                event.preventDefault();
-                this.focusEditingInput(currentIndex - 1, true);
-            }
-            else if (event.key === 'ArrowRight' && atEnd) {
-                event.preventDefault();
-                this.focusEditingInput(currentIndex + 1, false);
+            if (this.state.editing.type === 'word') {
+                if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
+                    return;
+                if (event.target.selectionStart !== event.target.selectionEnd)
+                    return;
+                const caret = event.target.selectionStart ?? 0;
+                const atEdge = event.key === 'ArrowLeft'
+                    ? caret <= 0
+                    : caret >= event.target.value.length;
+                if (!atEdge)
+                    return;
+                const direction = event.key === 'ArrowRight' ? 1 : -1;
+                if (this.navigateToNeighborWord(direction, event.target)) {
+                    event.preventDefault();
+                }
             }
             return;
         }
@@ -553,6 +558,35 @@ export class SyntaxEditor {
             return;
         }
     }
+    navigateToNeighborWord(direction, input) {
+        const currentId = this.state.selectedNodeId;
+        if (currentId === null)
+            return false;
+        const root = this.tree.getJSON();
+        const words = this.tree.getWordsFromTokenRange(root.startToken, root.endToken);
+        const currentIndex = words.findIndex((word) => word.id === currentId);
+        const neighbor = words[currentIndex + direction];
+        if (currentIndex < 0 || !neighbor || !this.canInteractWithNode(neighbor.id))
+            return false;
+        const field = input === this.state.editing.elements?.comment ? 'comment' : 'word';
+        const editedWord = this.state.editing.elements?.word?.value ?? '';
+        if (this.getWordEditError(currentId, editedWord) !== null) {
+            this.finishEditing();
+            return true;
+        }
+        const trimmedWord = editedWord.trim();
+        const replacementCount = trimmedWord ? trimmedWord.split(/\s+/).length : 0;
+        this.finishEditing();
+        const updatedRoot = this.tree.getJSON();
+        const updatedWords = this.tree.getWordsFromTokenRange(updatedRoot.startToken, updatedRoot.endToken);
+        const destinationIndex = currentIndex + (direction < 0 ? -1 : replacementCount);
+        const destination = updatedWords[destinationIndex];
+        if (!destination)
+            return true;
+        this.selectNode(destination.id);
+        this.startEditing(undefined, field, (direction === -1));
+        return true;
+    }
     getEditingInputElements() {
         const elements = this.state.editing.elements;
         if (!elements)
@@ -565,7 +599,7 @@ export class SyntaxEditor {
     focusEditingInput(index, atEnd) {
         const inputs = this.getEditingInputElements();
         if (index < 0 || index >= inputs.length)
-            return; // TODO: Navigate between words
+            return;
         const input = inputs[index];
         input.focus();
         const position = (atEnd) ? input.value.length : 0;
@@ -580,7 +614,7 @@ export class SyntaxEditor {
         const nextIndex = (currentIndex + direction + inputs.length) % inputs.length;
         this.focusEditingInput(nextIndex, shiftKey);
     }
-    startEditing(event) {
+    startEditing(event, preferredField, caretAtEnd = true) {
         let field = (event) ? getField(event) : null;
         const didFindField = !!field;
         const id = this.state.selectedNodeId;
@@ -596,6 +630,9 @@ export class SyntaxEditor {
             field: null
         };
         this.autocomplete.connect(this.state.editing.elements, (input) => this.focusNextEditingInput(input));
+        if (preferredField !== undefined) {
+            field = preferredField;
+        }
         if (field === null) {
             field = (element.type === 'word') ? 'word' : 'function';
         }
@@ -605,8 +642,10 @@ export class SyntaxEditor {
                 inputEl.focus();
                 if (didFindField)
                     inputEl.setSelectionRange(0, inputEl.value.length);
-                else
-                    inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
+                else {
+                    const position = caretAtEnd ? inputEl.value.length : 0;
+                    inputEl.setSelectionRange(position, position);
+                }
             });
         }
         this.state.editing.field = field;
