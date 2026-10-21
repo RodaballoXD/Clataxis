@@ -524,21 +524,23 @@ export class SyntaxEditor {
         if (currentIndex < 0)
             throw new Error("handleEditingFieldNavigation: event.target is not in the list of editing input elements");
         if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-            if (this.state.editing.type === 'word') {
-                if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
-                    return;
-                if (event.target.selectionStart !== event.target.selectionEnd)
-                    return;
-                const caret = event.target.selectionStart ?? 0;
-                const atEdge = event.key === 'ArrowLeft'
-                    ? caret <= 0
-                    : caret >= event.target.value.length;
-                if (!atEdge)
-                    return;
-                const direction = event.key === 'ArrowRight' ? 1 : -1;
+            const isLeft = event.key === 'ArrowLeft';
+            const isWordNode = this.state.editing.type === 'word';
+            if (isWordNode && event.target.selectionStart !== event.target.selectionEnd)
+                return;
+            const caret = event.target.selectionStart ?? 0;
+            const atEdge = isLeft ? caret <= 0 : caret >= event.target.value.length;
+            if (!atEdge)
+                return;
+            if (isWordNode) {
+                const direction = isLeft ? -1 : 1;
                 if (this.navigateToNeighborWord(direction, event.target)) {
                     event.preventDefault();
                 }
+            }
+            else {
+                event.preventDefault();
+                this.focusEditingInput(currentIndex + (isLeft ? -1 : 1), isLeft);
             }
             return;
         }
@@ -802,6 +804,4 @@ function sameReducedJSON(a, b) {
 function cloneReducedJSON(json) {
     return JSON.parse(JSON.stringify(json));
 }
-// TODO: Arrow keys to navigate between word nodes
-// TODO: On Box create, scroll to the middle of it so text field is visible in big sentences
 //# sourceMappingURL=editor.js.map
