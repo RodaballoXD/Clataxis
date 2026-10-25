@@ -71,9 +71,9 @@ export function createEditorInterface(onReturnToSentenceScreen, onModeChange, mo
     }
     const zoomControlsEl = document.createElement('div');
     zoomControlsEl.className = 'editor-floating-panel editor-zoom-controls';
-    const zoomOutButtonEl = createButton('', 'Reducir zoom');
+    const zoomOutButtonEl = createButton('', 'Reducir zoom (-)');
     zoomOutButtonEl.appendChild(createIcon('M10.5 4.5a6 6 0 1 0 0 12a6 6 0 0 0 0-12 M15 15l5 5 M7.5 10.5h6', 'editor-action-icon'));
-    const zoomInButtonEl = createButton('', 'Aumentar zoom');
+    const zoomInButtonEl = createButton('', 'Aumentar zoom (+)');
     zoomInButtonEl.appendChild(createIcon('M10.5 4.5a6 6 0 1 0 0 12a6 6 0 0 0 0-12 M15 15l5 5 M10.5 7.5v6 M7.5 10.5h6', 'editor-action-icon'));
     zoomControlsEl.replaceChildren(zoomOutButtonEl, zoomInButtonEl);
     const textControlsEl = document.createElement('div');

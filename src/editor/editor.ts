@@ -160,9 +160,9 @@ export class SyntaxEditor {
         return null;
     }
 
-    private changeZoom(isIn: boolean) {
+    private changeZoom(isZoomingIn: boolean) {
         const currentIndex = ZOOM_STEPS.indexOf(this.zoom);
-        const nextIndex = (isIn) ? Math.min(currentIndex + 1, ZOOM_STEPS.length - 1) : Math.max(currentIndex - 1, 0);
+        const nextIndex = (isZoomingIn) ? Math.min(currentIndex + 1, ZOOM_STEPS.length - 1) : Math.max(currentIndex - 1, 0);
         const nextZoom = ZOOM_STEPS[nextIndex];
         this.zoom = Math.round(nextZoom * 100) / 100;
 
@@ -194,8 +194,8 @@ export class SyntaxEditor {
 
         const deleteButtonEl = document.createElement('button');
         deleteButtonEl.type = 'button';
-        deleteButtonEl.title = 'Eliminar caja (Suprimir)';
-        deleteButtonEl.setAttribute('aria-label', 'Eliminar caja (Suprimir)');
+        deleteButtonEl.title = 'Eliminar caja y su contenido (Suprimir)';
+        deleteButtonEl.setAttribute('aria-label', 'Eliminar caja y su contenido (Suprimir)');
         deleteButtonEl.appendChild(createIcon('M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13 M10 11v5 M14 11v5', 'node-action-icon'));
         deleteButtonEl.addEventListener('click', (event) => {
             event.stopPropagation();
@@ -964,7 +964,7 @@ export class SyntaxEditor {
 
     private deleteNode() {
         this.doDeleteAction(false);
-        this.showNotification('Caja eliminada');
+        this.showNotification('Caja eliminada. Ctrl+Z para deshacer', 10000);
     }
 
     private promoteChildren() {
