@@ -1,4 +1,5 @@
 node_modules/
+build/
 examples/
 build_on_ctrl_s.py
 .agents/

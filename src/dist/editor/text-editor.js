@@ -110,7 +110,8 @@ function loadMonaco() {
             reject(new Error('Monaco loader is unavailable'));
             return;
         }
-        amdRequire.config({ paths: { vs: '../node_modules/monaco-editor/min/vs' } });
+        const vsPath = new URL('./vs', document.baseURI).href;
+        amdRequire.config({ paths: { vs: vsPath } });
         amdRequire(['vs/editor/editor.main'], () => {
             if (!window.monaco) {
                 reject(new Error('Monaco editor did not initialize'));
