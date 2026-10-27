@@ -94,8 +94,8 @@ export function createEditorInterface(
 
     const textControlsEl = document.createElement('div');
     textControlsEl.className = 'editor-floating-panel editor-text-controls';
-    const compactButtonEl = createButton('Compactar', 'Compactar el código');
-    const indentButtonEl = createButton('Indentar', 'Embellecer e indentar el código');
+    const compactButtonEl = createButton('Compactar', 'Compactar el análisis. Ideal para compartirlo con un LLM');
+    const indentButtonEl = createButton('Indentar', 'Embellecer e indentar el análisis');
     textControlsEl.replaceChildren(compactButtonEl, indentButtonEl);
 
     const rootContainerEl = document.createElement('section');

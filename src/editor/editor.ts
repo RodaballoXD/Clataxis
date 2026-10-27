@@ -75,6 +75,8 @@ export class SyntaxEditor {
         if (this.resizeDrag && this.appEl.hasPointerCapture(this.resizeDrag.pointerId)) {
             this.appEl.releasePointerCapture(this.resizeDrag.pointerId);
         }
+        this.resizeDrag?.handleEl.classList.remove('dragging');
+        this.appEl.classList.remove('resize-dragging', 'word-dragging');
         if (this.state.pointer.pointerId !== null && this.appEl.hasPointerCapture(this.state.pointer.pointerId)) {
             this.appEl.releasePointerCapture(this.state.pointer.pointerId);
         }
@@ -314,7 +316,9 @@ export class SyntaxEditor {
                     && !this.state.editing.isEditing
                     && this.canResizeNode(nodeId)) {
                     event.preventDefault();
-                    this.resizeDrag = { nodeId, edge, pointerId: event.pointerId, token: null };
+                    this.resizeDrag = { nodeId, edge, pointerId: event.pointerId, token: null, handleEl: handle };
+                    handle.classList.add('dragging');
+                    this.appEl.classList.add('resize-dragging');
                     this.lastPointerX = event.clientX;
                     this.lastPointerY = event.clientY;
                     this.appEl.setPointerCapture(event.pointerId);
@@ -341,6 +345,7 @@ export class SyntaxEditor {
                 endWordToken: wordToken,
                 startMousePosition: this.getMousePosition(event)
             };
+            this.appEl.classList.add('word-dragging');
             this.clearDragHighlight();
             this.appEl.setPointerCapture(event.pointerId);
             return;
@@ -397,7 +402,11 @@ export class SyntaxEditor {
 
         if (!this.state.pointer.didMove) {
             const clicked = this.getClickedNode(event);
-            if (clicked.didClickInput) return;
+            if (clicked.didClickInput) {
+                this.clearPointerState();
+                this.clearDragHighlight();
+                return;
+            }
             const clickedId = clicked.nodeEl?.nodeId as number;
             this.clickNode(clickedId ?? null, event);
             this.clearPointerState();
@@ -445,6 +454,8 @@ export class SyntaxEditor {
 
         this.updateResizePreview(event.clientX);
         this.resizeDrag = null;
+        resize.handleEl.classList.remove('dragging');
+        this.appEl.classList.remove('resize-dragging');
         if (this.appEl.hasPointerCapture(event.pointerId)) {
             this.appEl.releasePointerCapture(event.pointerId);
         }
@@ -458,6 +469,8 @@ export class SyntaxEditor {
         if (!resize) return;
 
         this.resizeDrag = null;
+        resize.handleEl.classList.remove('dragging');
+        this.appEl.classList.remove('resize-dragging');
         if (this.appEl.hasPointerCapture(resize.pointerId)) {
             this.appEl.releasePointerCapture(resize.pointerId);
         }
@@ -465,23 +478,43 @@ export class SyntaxEditor {
         this.clearTreePreview();
     }
 
-    private getWordTokenAtClientX(clientX: number): number | null {
+    private getWordTokenAtClientX(clientX: number, edge: 'start' | 'end'): number | null {
         const root = this.tree.getJSON();
-        const words = this.tree.getWordsFromTokenRange(root.startToken, root.endToken);
+        const words = this.tree.getWordsFromTokenRange(root.startToken, root.endToken)
+            .sort((a, b) => a.token - b.token);
         if (words.length === 0) return null;
 
-        let nearestToken: number | null = null;
+        const firstWordEl = this.elementMapping.get(words[0].id) as WordNodeEl | undefined;
+        if (!firstWordEl) return null;
+        const firstRect = firstWordEl.getBoundingClientRect();
+        let nearestToken = words[0].token;
         let nearestDistance = Number.POSITIVE_INFINITY;
-        for (const word of words) {
-            const wordEl = this.elementMapping.get(word.id) as WordNodeEl | undefined;
-            if (!wordEl) continue;
-            const rect = wordEl.getBoundingClientRect();
-            const distance = Math.abs(clientX - (rect.left + rect.right) / 2);
+
+        const considerBoundary = (x: number, token: number) => {
+            const distance = Math.abs(clientX - x);
             if (distance < nearestDistance) {
                 nearestDistance = distance;
-                nearestToken = word.token;
+                nearestToken = token;
             }
+        };
+
+        considerBoundary(firstRect.left, words[0].token);
+        for (let index = 1; index < words.length; index++) {
+            const previousWordEl = this.elementMapping.get(words[index - 1].id) as WordNodeEl | undefined;
+            const currentWordEl = this.elementMapping.get(words[index].id) as WordNodeEl | undefined;
+            if (!previousWordEl || !currentWordEl) continue;
+
+            const previousRect = previousWordEl.getBoundingClientRect();
+            const currentRect = currentWordEl.getBoundingClientRect();
+            const boundary = (previousRect.right + currentRect.left) / 2;
+            const token = edge === 'start' ? words[index].token : words[index - 1].token;
+            considerBoundary(boundary, token);
         }
+
+        const lastWordEl = this.elementMapping.get(words[words.length - 1].id) as WordNodeEl | undefined;
+        if (!lastWordEl) return null;
+        considerBoundary(lastWordEl.getBoundingClientRect().right, words[words.length - 1].token);
+
         return nearestToken;
     }
 
@@ -489,7 +522,7 @@ export class SyntaxEditor {
         const resize = this.resizeDrag;
         if (!resize) return;
 
-        const token = this.getWordTokenAtClientX(clientX);
+        const token = this.getWordTokenAtClientX(clientX, resize.edge);
         if (token === null || token === resize.token) return;
         resize.token = token;
         this.previewResize(resize.nodeId, token, resize.edge);
@@ -557,6 +590,16 @@ export class SyntaxEditor {
         this.elementMapping = this.rootEl.build(preview.tree.getJSON());
         this.rootEl.classList.add('tree-preview');
 
+        if (this.resizeDrag) {
+            const nodeEl = this.elementMapping.get(this.resizeDrag.nodeId);
+            const handle = nodeEl?.querySelector<HTMLButtonElement>(
+                `:scope > .syntax-node > .line > .resize-handle.${this.resizeDrag.edge}`
+            );
+            if (!handle) throw new Error('Resize handle is missing from the preview tree');
+            this.resizeDrag.handleEl = handle;
+            handle.classList.add('dragging');
+        }
+
         if (preview.targetNodeId !== undefined) {
             const target = this.elementMapping.get(preview.targetNodeId);
             target?.classList.add('tree-preview-target');
@@ -615,6 +658,7 @@ export class SyntaxEditor {
     }
 
     private clearPointerState() {
+        this.appEl.classList.remove('word-dragging');
         this.state.pointer = {
             isDragging: false,
             pointerId: null,
@@ -1084,6 +1128,7 @@ interface ResizeDragData {
     edge: 'start' | 'end';
     pointerId: number;
     token: number | null;
+    handleEl: HTMLButtonElement;
 }
 
 type TreePreviewOperation = 'create' | 'resize';

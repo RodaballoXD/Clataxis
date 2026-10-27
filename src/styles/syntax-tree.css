@@ -106,14 +106,33 @@ word-node:not(.selected) > .word-node:not(.editing):hover > .word {
     background: #f1a03d;
 }
 
+.resize-handle.dragging {
+    background: #f1a03d;
+}
+
 .resize-handle:focus-visible {
     outline: 2px solid rgba(31, 122, 140, 0.45);
     outline-offset: 2px;
 }
 
+#app.resize-dragging,
+#app.resize-dragging * {
+    cursor: ew-resize !important;
+}
+
+#app.word-dragging,
+#app.word-dragging * {
+    cursor: grabbing !important;
+}
+
 .tree-preview .resize-handle,
 .tree-preview .node-action-buttons {
     display: none;
+}
+
+.tree-preview .resize-handle.dragging {
+    display: block;
+    background: #f1a03d;
 }
 
 .tree-preview-target > .syntax-node > .line {
@@ -232,6 +251,11 @@ syntax-node:hover:not(.selected):not(:has(.children syntax-node:hover, .children
     justify-content: center;
     user-select: none;
     touch-action: none;
+    cursor: grab;
+}
+
+.word-node:active {
+    cursor: grabbing;
 }
 
 .word-comment, .word-comment-input {
