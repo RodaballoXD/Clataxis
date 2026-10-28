@@ -3,23 +3,31 @@ const REOPEN_HINT_DURATION_MS = 2500;
 const EDITOR_GUIDE_STEPS = [
     {
         heading: 'Crea una caja',
-        description: 'En el árbol, arrastra desde la primera palabra hasta la última que quieras agrupar. Al soltar, se crea una caja y puedes escribir su etiqueta.'
+        description: 'Haz clic y arrastra desde la primera hasta la última palabra que quieras incluir en un sintagma u oración. Al soltar se creará una caja.'
     },
     {
-        heading: 'Edita una caja',
-        description: 'Haz clic una vez en una caja para seleccionarla y vuelve a hacer clic para editar sus campos. Pulsa Intro para terminar la edición.'
+        heading: 'Escribe el análsis de una caja',
+        description: 'Haz doble clic en una caja para editar su análisis. Podrás modificar su categoría y función y añadir comentarios.'
     },
     {
-        heading: 'Ajusta o quita una caja',
-        description: 'Selecciona una caja y arrastra uno de sus bordes para cambiar las palabras que abarca. Usa «Quitar caja» para conservar su contenido o «Eliminar caja y su contenido» para borrarlo todo.'
+        heading: 'Elimina una caja',
+        description: 'Haz clic en una caja para seleccionarla. Utiliza los botones que aparecerán debajo para eliminarla, junto con su contenido o no.'
     },
     {
-        heading: 'Deshaz cambios y ajusta la vista',
-        description: 'Usa los botones de deshacer y rehacer, o Ctrl+Z y Ctrl+Y. Los botones + y − cambian el zoom del árbol.'
+        heading: 'Ajusta el tamaño de una caja',
+        description: 'Haz clic en una caja para seleccionarla. Arrastra sus bordes para cambiar su tamaño.'
     },
     {
-        heading: 'Prueba el editor de texto',
-        description: 'Abre el menú de la esquina superior izquierda y elige «Texto» para editar el análisis directamente. «Compactar» e «Indentar» cambian su formato; si la sintaxis no es válida, el análisis no se actualiza.'
+        heading: 'Edita la oración',
+        description: 'Haz doble clic en la oración para editar una palabra. Puedes reemplazarla, añadir nuevas palabras separándolas con espacios o eliminarla. También puedes añadir comentarios.'
+    },
+    {
+        heading: 'Deshaz y rehaz cambios',
+        description: 'Utiliza los botones de deshacer y rehacer para revertir o recuperar cambios recientes.'
+    },
+    {
+        heading: 'Usa atajos de teclado',
+        description: 'Ctrl + Z para deshacer, Ctrl + Y para rehacer, Enter para terminar una edición... Coloca el cursor sobre cualquier botón para ver su atajo de teclado.'
     }
 ];
 export function createEditorHelp(options) {
