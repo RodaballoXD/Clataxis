@@ -83,12 +83,11 @@ export class FieldAutocomplete {
 
         if (!this.isVisible()) return false;
 
-        if (event.key === 'Enter' || event.key === 'Tab') {
+        if (event.key === 'Tab') {
             event.preventDefault();
-            if (event.key === 'Enter' && this.activeInput.value.trim() === '') return false;
             const suggestion = this.currentSuggestions[this.activeIndex];
             this.acceptActiveSuggestion();
-            return event.key === 'Tab' && suggestion?.field !== this.activeField;
+            return suggestion.field !== this.activeField;
         }
 
         if (event.key === 'Escape') {

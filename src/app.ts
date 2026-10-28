@@ -14,6 +14,7 @@ export class App {
     private appEl: HTMLDivElement;
     private currentEditorJSON: ReducedJSON | null = null;
     private editorMode: EditorMode = 'tree';
+    private editorHelpOpen = true;
     private undoStack: ReducedJSON[] = [];
     private redoStack: ReducedJSON[] = [];
 
@@ -51,6 +52,7 @@ export class App {
             if (!json) throw new Error("setScreen cannot create editor without json parameter");
             this.currentEditorJSON = json;
             this.editorMode = 'tree';
+            this.editorHelpOpen = true;
             this.mountEditorScreen(json, urlMode, this.editorMode);
         }
     }
@@ -103,7 +105,13 @@ export class App {
             onReturnToSentenceScreen,
             (nextMode) => this.switchEditorMode(nextMode),
             mode,
-            () => this.activeEditor?.commitPendingEdit()
+            () => this.activeEditor?.commitPendingEdit(),
+            {
+                initiallyOpen: this.editorHelpOpen,
+                onOpenChange: (isOpen) => {
+                    this.editorHelpOpen = isOpen;
+                }
+            }
         );
         editorContainerEls.undoButtonEl.addEventListener('click', this.undo);
         editorContainerEls.redoButtonEl.addEventListener('click', this.redo);

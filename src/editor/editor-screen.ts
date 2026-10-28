@@ -1,10 +1,12 @@
 import { createIcon } from "../shared/icons.js";
+import { createEditorHelp, type EditorHelpOptions } from "./editor-help.js";
 
 export function createEditorInterface(
     onReturnToSentenceScreen: () => void,
     onModeChange: (mode: EditorMode) => void,
     mode: EditorMode,
-    onBeforeAction: () => void
+    onBeforeAction: () => void,
+    helpOptions: EditorHelpOptions
 ): EditorInterfaceEls {
     const interfaceContainerEl = document.createElement('div');
     interfaceContainerEl.id = 'editor-container';
@@ -126,6 +128,7 @@ export function createEditorInterface(
     redoButtonEl.addEventListener('click', onBeforeAction);
     historyControlsEl.replaceChildren(undoButtonEl, redoButtonEl);
     historyPanelEl.replaceChildren(notificationEl, historyControlsEl);
+    const editorHelpEl = createEditorHelp(helpOptions);
 
     interfaceContainerEl.replaceChildren(
         modeSelectorEl,
@@ -133,7 +136,8 @@ export function createEditorInterface(
         textControlsEl,
         guidedPanelEl,
         rootContainerEl,
-        historyPanelEl
+        historyPanelEl,
+        editorHelpEl
     );
 
     return {

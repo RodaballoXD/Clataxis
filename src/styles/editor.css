@@ -113,6 +113,171 @@
     stroke-width: 1.8;
 }
 
+.editor-help {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+}
+
+.editor-help[hidden],
+.editor-help [hidden] {
+    display: none;
+}
+
+.editor-help-panel {
+    position: absolute;
+    right: 0;
+    bottom: calc(5.5rem + env(safe-area-inset-bottom));
+    left: 0;
+    z-index: 1;
+    min-height: 15rem;
+    box-sizing: border-box;
+    padding: 1.5rem 5rem calc(1.5rem + env(safe-area-inset-bottom));
+    border: 1px solid #cbd4dd;
+    border-bottom: 0;
+    border-radius: 1.25rem 1.25rem 0 0;
+    color: #202a34;
+    background: rgba(255, 255, 255, 0.99);
+    box-shadow: 0 -0.5rem 2rem rgba(5, 12, 23, 0.2);
+    pointer-events: auto;
+}
+
+.editor-help-progress,
+.editor-help-panel h2,
+.editor-help-description {
+    max-width: 48rem;
+    margin-right: auto;
+    margin-left: auto;
+}
+
+.editor-help-progress {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    color: #52606d;
+    font-size: 0.85rem;
+    font-weight: 650;
+    text-align: center;
+}
+
+.editor-help-panel h2 {
+    margin-top: 0;
+    margin-bottom: 0.65rem;
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    line-height: 1.2;
+    text-align: center;
+}
+
+.editor-help-description {
+    margin-top: 0;
+    margin-bottom: 0;
+    color: #52606d;
+    font-size: 1rem;
+    line-height: 1.55;
+    text-align: center;
+}
+
+.editor-help-close,
+.editor-help-step,
+.editor-help-button {
+    display: grid;
+    place-items: center;
+    border: 1px solid #d7dfe8;
+    color: #1d2430;
+    background: #ffffff;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.editor-help-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+}
+
+.editor-help-close,
+.editor-help-step {
+    position: absolute;
+    border-radius: 0.75rem;
+}
+
+.editor-help-close {
+    top: 1rem;
+    right: 1rem;
+    width: 2.5rem;
+    height: 2.5rem;
+}
+
+.editor-help-step {
+    top: 50%;
+    width: 2.75rem;
+    height: 3.25rem;
+    transform: translateY(-50%);
+}
+
+.editor-help-previous {
+    left: 1.25rem;
+}
+
+.editor-help-next {
+    right: 1.25rem;
+}
+
+.editor-help-close:hover,
+.editor-help-step:hover:not(:disabled),
+.editor-help-button:hover {
+    background: #f7f9fb;
+}
+
+.editor-help-close:focus-visible,
+.editor-help-step:focus-visible,
+.editor-help-button:focus-visible {
+    outline: 2px solid rgba(31, 122, 140, 0.3);
+    outline-offset: 2px;
+}
+
+.editor-help-step:disabled {
+    color: #9aa3ae;
+    cursor: default;
+}
+
+.editor-help-button {
+    position: absolute;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 2;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    color: #155d6d;
+    box-shadow: 0 0.25rem 0.9rem rgba(29, 36, 48, 0.18);
+}
+
+.editor-help-reopen-hint {
+    position: absolute;
+    right: 1rem;
+    bottom: 4rem;
+    width: max-content;
+    max-width: min(17rem, calc(100vw - 2rem));
+    box-sizing: border-box;
+    margin: 0;
+    border: 1px solid #cbd4dd;
+    border-radius: 0.75rem;
+    padding: 0.65rem 0.8rem;
+    color: #202a34;
+    background: #ffffff;
+    box-shadow: 0 0.25rem 0.9rem rgba(29, 36, 48, 0.12);
+    font-size: 0.875rem;
+    line-height: 1.4;
+    pointer-events: auto;
+}
+
 .editor-screen[data-mode="text"] #editor-root-container {
     width: 100%;
     min-width: 0;
@@ -304,6 +469,34 @@
 
     .editor-text-controls > button {
         padding: 0 0.55rem;
+    }
+
+    .editor-help-panel {
+        min-height: 17rem;
+        padding: 1.5rem 3.5rem calc(1.25rem + env(safe-area-inset-bottom));
+    }
+
+    .editor-help-close {
+        top: 0.75rem;
+        right: 0.75rem;
+    }
+
+    .editor-help-previous {
+        left: 0.5rem;
+    }
+
+    .editor-help-next {
+        right: 0.5rem;
+    }
+
+    .editor-help-button {
+        right: 0.75rem;
+        bottom: 0.75rem;
+    }
+
+    .editor-help-reopen-hint {
+        right: 0.75rem;
+        bottom: 3.75rem;
     }
 
 }

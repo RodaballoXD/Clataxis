@@ -12,6 +12,7 @@ export class App {
         this.activeTextEditor = null;
         this.currentEditorJSON = null;
         this.editorMode = 'tree';
+        this.editorHelpOpen = true;
         this.undoStack = [];
         this.redoStack = [];
         this.onBrowserNavigation = () => {
@@ -101,6 +102,7 @@ export class App {
                 throw new Error("setScreen cannot create editor without json parameter");
             this.currentEditorJSON = json;
             this.editorMode = 'tree';
+            this.editorHelpOpen = true;
             this.mountEditorScreen(json, urlMode, this.editorMode);
         }
     }
@@ -136,7 +138,12 @@ export class App {
         const onReturnToSentenceScreen = () => {
             this.setScreen('sentence', undefined, 'push');
         };
-        const editorContainerEls = createEditorInterface(onReturnToSentenceScreen, (nextMode) => this.switchEditorMode(nextMode), mode, () => this.activeEditor?.commitPendingEdit());
+        const editorContainerEls = createEditorInterface(onReturnToSentenceScreen, (nextMode) => this.switchEditorMode(nextMode), mode, () => this.activeEditor?.commitPendingEdit(), {
+            initiallyOpen: this.editorHelpOpen,
+            onOpenChange: (isOpen) => {
+                this.editorHelpOpen = isOpen;
+            }
+        });
         editorContainerEls.undoButtonEl.addEventListener('click', this.undo);
         editorContainerEls.redoButtonEl.addEventListener('click', this.redo);
         this.appEl.appendChild(editorContainerEls.interfaceContainerEl);
