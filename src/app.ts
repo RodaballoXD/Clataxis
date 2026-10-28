@@ -1,5 +1,6 @@
-import { createEditorInterface, type EditorInterfaceEls, type EditorMode } from "./editor/editor-screen.js";
+import { createEditorInterface, type EditorMode } from "./editor/editor-screen.js";
 import { SyntaxEditor } from "./editor/editor.js";
+import type { EditorHelpState } from "./editor/editor-help.js";
 import type { ReducedJSON } from "./editor/tree.js";
 import { sentenceToReducedJSON } from "./editor/tree.js";
 import { reducedJSONToSyntaxRepr } from "./editor/tree-format.js";
@@ -14,8 +15,7 @@ export class App {
     private appEl: HTMLDivElement;
     private currentEditorJSON: ReducedJSON | null = null;
     private editorMode: EditorMode = 'tree';
-    private editorHelpOpen = true;
-    private editorHelp: EditorInterfaceEls['editorHelp'] | null = null;
+    private editorHelpState: EditorHelpState = { isOpen: true, step: 0 };
     private undoStack: ReducedJSON[] = [];
     private redoStack: ReducedJSON[] = [];
 
@@ -34,11 +34,7 @@ export class App {
 
     private setScreen(screen: Screen, json?: ReducedJSON, urlMode: URLMode = 'none') {
         this.activeScreen = screen;
-        this.activeEditor?.destroy();
-        this.activeEditor = null;
-        this.activeTextEditor?.destroy();
-        this.activeTextEditor = null;
-        this.editorHelp = null;
+        this.destroyActiveEditors();
         this.undoStack = [];
         this.redoStack = [];
 
@@ -54,7 +50,6 @@ export class App {
             if (!json) throw new Error("setScreen cannot create editor without json parameter");
             this.currentEditorJSON = json;
             this.editorMode = 'tree';
-            this.editorHelpOpen = true;
             this.mountEditorScreen(json, urlMode, this.editorMode);
         }
     }
@@ -90,10 +85,7 @@ export class App {
         if (!json) return;
 
         const zoomLevel = this.activeEditor?.zoomLevel ?? 1;
-        this.activeEditor?.destroy();
-        this.activeEditor = null;
-        this.activeTextEditor?.destroy();
-        this.activeTextEditor = null;
+        this.destroyActiveEditors();
         this.editorMode = mode;
         this.appEl.replaceChildren();
         this.mountEditorScreen(json, 'none', mode, zoomLevel);
@@ -107,19 +99,11 @@ export class App {
             onReturnToSentenceScreen,
             (nextMode) => this.switchEditorMode(nextMode),
             mode,
-            () => this.activeEditor?.commitPendingEdit(),
-            {
-                initiallyOpen: this.editorHelpOpen,
-                onOpenChange: (isOpen) => {
-                    this.editorHelpOpen = isOpen;
-                }
-            }
+            () => this.activeEditor?.commitPendingEdit()
         );
-        this.editorHelp = editorContainerEls.editorHelp;
         editorContainerEls.undoButtonEl.addEventListener('click', this.undo);
         editorContainerEls.redoButtonEl.addEventListener('click', this.redo);
         this.appEl.appendChild(editorContainerEls.interfaceContainerEl);
-        if (this.editorHelpOpen) editorContainerEls.editorHelp.focus();
         this.updateHistoryButtons(editorContainerEls.undoButtonEl, editorContainerEls.redoButtonEl);
         if (urlMode !== 'none') {
             setEditorJSONInURL(json, urlMode);
@@ -127,7 +111,7 @@ export class App {
 
         if (mode === 'tree') {
             const onChange = (nextJSON: ReducedJSON) => this.recordAnalysisChange(nextJSON);
-            const editor = new SyntaxEditor(json, onChange, editorContainerEls, zoomLevel);
+            const editor = new SyntaxEditor(json, onChange, editorContainerEls, zoomLevel, this.editorHelpState);
             this.activeEditor = editor;
             editor.mount(editorContainerEls.rootContainerEl);
             return;
@@ -143,6 +127,17 @@ export class App {
         );
         this.activeTextEditor = textEditor;
         textEditor.mount(editorContainerEls.rootContainerEl);
+    }
+
+    private destroyActiveEditors() {
+        if (this.activeEditor) {
+            const helpState = this.activeEditor.getEditorHelpState();
+            if (helpState) this.editorHelpState = helpState;
+        }
+        this.activeEditor?.destroy();
+        this.activeEditor = null;
+        this.activeTextEditor?.destroy();
+        this.activeTextEditor = null;
     }
 
     private recordAnalysisChange(nextJSON: ReducedJSON) {
@@ -188,7 +183,6 @@ export class App {
     }
 
     private onKeyDown = (event: KeyboardEvent) => {
-        if (this.editorMode === 'text' && this.editorHelp?.handleKeyDown(event)) return;
         if (!(event.ctrlKey || event.metaKey)) return;
         if (this.editorMode !== 'text') {
             if (!this.activeEditor || this.activeEditor.state.editing.isEditing) return;

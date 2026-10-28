@@ -1,16 +1,18 @@
 import { createIcon } from "../shared/icons.js";
 
-const REOPEN_HINT_DURATION_MS = 2500;
+const REOPEN_HINT_DURATION_MS = 4000;
 
-export interface EditorHelpOptions {
-    initiallyOpen: boolean;
-    onOpenChange: (isOpen: boolean) => void;
+export interface EditorHelpState {
+    isOpen: boolean;
+    step: number;
 }
 
 export interface EditorHelpView {
     element: HTMLDivElement;
     focus(): void;
     handleKeyDown(event: KeyboardEvent): boolean;
+    getState(): EditorHelpState;
+    destroy(): void;
 }
 
 interface EditorGuideStep {
@@ -45,11 +47,11 @@ const EDITOR_GUIDE_STEPS: readonly EditorGuideStep[] = [
     },
     {
         heading: 'Usa atajos de teclado',
-        description: 'Ctrl + Z para deshacer, Ctrl + Y para rehacer, Enter para terminar una edición... Coloca el cursor sobre cualquier botón para ver su atajo de teclado.'
+        description: 'Ctrl + Z para deshacer, Ctrl + Y para rehacer, Entrar para terminar una edición... Coloca el cursor sobre cualquier botón para ver su atajo de teclado.'
     }
 ];
 
-export function createEditorHelp(options: EditorHelpOptions): EditorHelpView {
+export function createEditorHelp(initialState: EditorHelpState): EditorHelpView {
     const containerEl = document.createElement('div');
     containerEl.className = 'editor-help';
 
@@ -100,6 +102,7 @@ export function createEditorHelp(options: EditorHelpOptions): EditorHelpView {
     helpButtonEl.type = 'button';
     helpButtonEl.appendChild(createIcon('M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3m-.01 4h.01', 'editor-help-icon'));
     helpButtonEl.setAttribute('aria-label', 'Abrir guía del editor');
+    helpButtonEl.title = 'Abrir guía del editor';
     helpButtonEl.setAttribute('aria-controls', panelEl.id);
     helpButtonEl.addEventListener('click', () => {
         setOpen(true);
@@ -122,11 +125,18 @@ export function createEditorHelp(options: EditorHelpOptions): EditorHelpView {
     containerEl.append(panelEl, helpButtonEl, reopenHintEl);
 
     let currentStep = 0;
-    let isOpen = options.initiallyOpen;
+    let isOpen = initialState.isOpen;
     let reopenHintTimeout: number | null = null;
 
     function showStep(stepIndex: number) {
-        currentStep = Math.max(0, Math.min(stepIndex, EDITOR_GUIDE_STEPS.length - 1));
+        const nextStep = Math.max(0, Math.min(stepIndex, EDITOR_GUIDE_STEPS.length - 1));
+        if (nextStep === currentStep) return;
+
+        currentStep = nextStep;
+        renderStep();
+    }
+
+    function renderStep() {
         const step = EDITOR_GUIDE_STEPS[currentStep];
         progressEl.textContent = `${currentStep + 1} de ${EDITOR_GUIDE_STEPS.length}`;
         headingEl.textContent = step.heading;
@@ -166,7 +176,6 @@ export function createEditorHelp(options: EditorHelpOptions): EditorHelpView {
         } else {
             showReopenHint();
         }
-        options.onOpenChange(isOpen);
     }
 
     function showReopenHint() {
@@ -185,16 +194,24 @@ export function createEditorHelp(options: EditorHelpOptions): EditorHelpView {
         reopenHintEl.hidden = true;
     }
 
-    showStep(currentStep);
+    currentStep = Math.max(0, Math.min(initialState.step, EDITOR_GUIDE_STEPS.length - 1));
+    renderStep();
     panelEl.hidden = !isOpen;
     helpButtonEl.hidden = isOpen;
     helpButtonEl.setAttribute('aria-expanded', String(isOpen));
     reopenHintEl.hidden = true;
-    if (!isOpen) showReopenHint();
 
     return {
         element: containerEl,
         focus: () => closeButtonEl.focus(),
-        handleKeyDown
+        handleKeyDown,
+        getState: () => ({ isOpen, step: currentStep }),
+        destroy: () => {
+            if (reopenHintTimeout !== null) {
+                window.clearTimeout(reopenHintTimeout);
+                reopenHintTimeout = null;
+            }
+            containerEl.remove();
+        }
     };
 }

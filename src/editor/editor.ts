@@ -4,6 +4,7 @@ import type { AnalysisData, NodeId, ReducedJSON, SyntaxNode, WordNode } from "./
 import { SyntaxTree } from "./tree.js";
 import { FieldAutocomplete } from "./autocomplete.js";
 import { createIcon } from "../shared/icons.js";
+import { createEditorHelp, type EditorHelpState, type EditorHelpView } from "./editor-help.js";
 
 const ZOOM_STEPS = [0.25, 0.3, 0.4, 0.5, 0.6, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4];
 
@@ -15,6 +16,7 @@ export class SyntaxEditor {
     private selectionActionsEl: HTMLDivElement;
     private onChange: (json: ReducedJSON) => void;
     private controls: EditorInterfaceEls;
+    private editorHelp: EditorHelpView | null;
     private zoom: number = 1;
     private notificationTimeout: number | null = null;
     private autocomplete = new FieldAutocomplete();
@@ -47,7 +49,8 @@ export class SyntaxEditor {
         json: ReducedJSON,
         onChange: (json: ReducedJSON) => void = () => {},
         controls: EditorInterfaceEls,
-        initialZoom = 1
+        initialZoom = 1,
+        initialHelpState: EditorHelpState | null = { isOpen: true, step: 0 }
     ) {
         this.tree = new SyntaxTree(json);
         this.rootEl = document.createElement('root-node') as RootNodeEl;
@@ -56,21 +59,31 @@ export class SyntaxEditor {
         this.selectionActionsEl = this.createSelectionActions();
         this.onChange = onChange;
         this.controls = controls;
+        this.editorHelp = initialHelpState === null ? null : createEditorHelp(initialHelpState);
     }
 
     mount(container: HTMLElement) {
+        if (this.editorHelp) {
+            this.controls.interfaceContainerEl.append(this.editorHelp.element);
+        }
         container.appendChild(this.rootEl);
         this.rootEl.style.zoom = String(this.zoom);
         this.renderTree();
         this.installListeners();
         this.installControlListeners();
+        if (this.editorHelp?.getState().isOpen) this.editorHelp.focus();
     }
 
     get zoomLevel(): number {
         return this.zoom;
     }
 
+    getEditorHelpState(): EditorHelpState | null {
+        return this.editorHelp?.getState() ?? null;
+    }
+
     destroy() {
+        this.editorHelp?.destroy();
         this.stopAutoScroll();
         if (this.resizeDrag && this.appEl.hasPointerCapture(this.resizeDrag.pointerId)) {
             this.appEl.releasePointerCapture(this.resizeDrag.pointerId);
@@ -250,7 +263,7 @@ export class SyntaxEditor {
             return;
         }
 
-        if (this.controls.editorHelp.handleKeyDown(event)) return;
+        if (this.editorHelp?.handleKeyDown(event)) return;
 
         if (event.key === 'Escape' && this.resizeDrag !== null) {
             event.preventDefault();

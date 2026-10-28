@@ -3,7 +3,7 @@ import { SyntaxEditor } from "./editor.js";
 import { createGuidedEditorState } from "./guided-state.js";
 export class GuidedSyntaxEditor extends SyntaxEditor {
     constructor(json, onChange, controls) {
-        super(json, onChange, controls);
+        super(json, onChange, controls, 1, null);
         this.supportsHistory = false;
         this.guidedState = createGuidedEditorState();
         this.onGuidedPanelClick = (event) => {

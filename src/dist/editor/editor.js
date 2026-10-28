@@ -1,9 +1,10 @@
 import { SyntaxTree } from "./tree.js";
 import { FieldAutocomplete } from "./autocomplete.js";
 import { createIcon } from "../shared/icons.js";
+import { createEditorHelp } from "./editor-help.js";
 const ZOOM_STEPS = [0.25, 0.3, 0.4, 0.5, 0.6, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4];
 export class SyntaxEditor {
-    constructor(json, onChange = () => { }, controls, initialZoom = 1) {
+    constructor(json, onChange = () => { }, controls, initialZoom = 1, initialHelpState = { isOpen: true, step: 0 }) {
         this.supportsHistory = true;
         this.zoom = 1;
         this.notificationTimeout = null;
@@ -59,7 +60,7 @@ export class SyntaxEditor {
                 this.handleEditingFieldNavigation(event);
                 return;
             }
-            if (this.controls.editorHelp.handleKeyDown(event))
+            if (this.editorHelp?.handleKeyDown(event))
                 return;
             if (event.key === 'Escape' && this.resizeDrag !== null) {
                 event.preventDefault();
@@ -232,18 +233,28 @@ export class SyntaxEditor {
         this.selectionActionsEl = this.createSelectionActions();
         this.onChange = onChange;
         this.controls = controls;
+        this.editorHelp = initialHelpState === null ? null : createEditorHelp(initialHelpState);
     }
     mount(container) {
+        if (this.editorHelp) {
+            this.controls.interfaceContainerEl.append(this.editorHelp.element);
+        }
         container.appendChild(this.rootEl);
         this.rootEl.style.zoom = String(this.zoom);
         this.renderTree();
         this.installListeners();
         this.installControlListeners();
+        if (this.editorHelp?.getState().isOpen)
+            this.editorHelp.focus();
     }
     get zoomLevel() {
         return this.zoom;
     }
+    getEditorHelpState() {
+        return this.editorHelp?.getState() ?? null;
+    }
     destroy() {
+        this.editorHelp?.destroy();
         this.stopAutoScroll();
         if (this.resizeDrag && this.appEl.hasPointerCapture(this.resizeDrag.pointerId)) {
             this.appEl.releasePointerCapture(this.resizeDrag.pointerId);

@@ -127,19 +127,19 @@
 
 .editor-help-panel {
     position: absolute;
-    right: 0;
+    left: 50%;
+    width: min(100% - 2rem, 42rem);
     bottom: calc(5.5rem + env(safe-area-inset-bottom));
-    left: 0;
     z-index: 1;
-    min-height: 15rem;
+    min-height: 12rem;
     box-sizing: border-box;
-    padding: 1.5rem 5rem calc(1.5rem + env(safe-area-inset-bottom));
-    border: 1px solid #cbd4dd;
-    border-bottom: 0;
-    border-radius: 1.25rem 1.25rem 0 0;
+    padding: 1.25rem 4.5rem calc(1.25rem + env(safe-area-inset-bottom));
+    border: 1px solid rgba(203, 212, 221, 0.8);
+    border-radius: 1rem;
     color: #202a34;
-    background: rgba(255, 255, 255, 0.99);
-    box-shadow: 0 -0.5rem 2rem rgba(5, 12, 23, 0.2);
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 0.5rem 1.5rem rgba(29, 36, 48, 0.12);
+    transform: translateX(-50%);
     pointer-events: auto;
 }
 
@@ -155,7 +155,7 @@
     margin-top: 0;
     margin-bottom: 0.5rem;
     color: #52606d;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 650;
     text-align: center;
 }
@@ -163,7 +163,7 @@
 .editor-help-panel h2 {
     margin-top: 0;
     margin-bottom: 0.65rem;
-    font-size: clamp(1.5rem, 3vw, 2rem);
+    font-size: clamp(1.35rem, 2.5vw, 1.75rem);
     line-height: 1.2;
     text-align: center;
 }
@@ -172,8 +172,8 @@
     margin-top: 0;
     margin-bottom: 0;
     color: #52606d;
-    font-size: 1rem;
-    line-height: 1.55;
+    font-size: 0.95rem;
+    line-height: 1.5;
     text-align: center;
 }
 
@@ -472,8 +472,9 @@
     }
 
     .editor-help-panel {
-        min-height: 17rem;
-        padding: 1.5rem 3.5rem calc(1.25rem + env(safe-area-inset-bottom));
+        width: calc(100% - 1.5rem);
+        min-height: 14rem;
+        padding: 1.25rem 3rem calc(1.25rem + env(safe-area-inset-bottom));
     }
 
     .editor-help-close {

@@ -1,12 +1,10 @@
 import { createIcon } from "../shared/icons.js";
-import { createEditorHelp, type EditorHelpOptions, type EditorHelpView } from "./editor-help.js";
 
 export function createEditorInterface(
     onReturnToSentenceScreen: () => void,
     onModeChange: (mode: EditorMode) => void,
     mode: EditorMode,
-    onBeforeAction: () => void,
-    helpOptions: EditorHelpOptions
+    onBeforeAction: () => void
 ): EditorInterfaceEls {
     const interfaceContainerEl = document.createElement('div');
     interfaceContainerEl.id = 'editor-container';
@@ -128,7 +126,6 @@ export function createEditorInterface(
     redoButtonEl.addEventListener('click', onBeforeAction);
     historyControlsEl.replaceChildren(undoButtonEl, redoButtonEl);
     historyPanelEl.replaceChildren(notificationEl, historyControlsEl);
-    const editorHelp = createEditorHelp(helpOptions);
 
     interfaceContainerEl.replaceChildren(
         modeSelectorEl,
@@ -136,8 +133,7 @@ export function createEditorInterface(
         textControlsEl,
         guidedPanelEl,
         rootContainerEl,
-        historyPanelEl,
-        editorHelp.element
+        historyPanelEl
     );
 
     return {
@@ -150,8 +146,7 @@ export function createEditorInterface(
         indentButtonEl,
         undoButtonEl,
         redoButtonEl,
-        notificationEl,
-        editorHelp
+        notificationEl
     };
 }
 
@@ -187,7 +182,6 @@ export interface EditorInterfaceEls {
     undoButtonEl: HTMLButtonElement;
     redoButtonEl: HTMLButtonElement;
     notificationEl: HTMLDivElement;
-    editorHelp: EditorHelpView;
 }
 
 export type EditorMode = 'tree' | 'text';

@@ -15,7 +15,7 @@ export class GuidedSyntaxEditor extends SyntaxEditor {
         onChange: (json: ReducedJSON) => void,
         controls: EditorInterfaceEls
     ) {
-        super(json, onChange, controls);
+        super(json, onChange, controls, 1, null);
         this.guidedPanelEl = controls.guidedPanelEl;
     }
 
