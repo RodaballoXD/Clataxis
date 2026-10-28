@@ -8,6 +8,8 @@ import { TextSyntaxEditor } from "./editor/text-editor.js";
 import { createEnterSentenceEl } from "./enter-sentence/enter-sentence-screen.js";
 import { clearEditorJSONFromURL, getEditorJSONFromURL, setEditorJSONInURL } from "./shared/url.js";
 
+const EDITOR_HELP_DISMISSED_STORAGE_KEY = 'clataxis:editor-help-dismissed';
+
 export class App {
     private activeScreen: Screen = 'sentence';
     private activeEditor: SyntaxEditor | null = null;
@@ -16,11 +18,14 @@ export class App {
     private currentEditorJSON: ReducedJSON | null = null;
     private editorMode: EditorMode = 'tree';
     private editorHelpState: EditorHelpState = { isOpen: true, step: 0 };
+    private editorHelpDismissed = false;
     private undoStack: ReducedJSON[] = [];
     private redoStack: ReducedJSON[] = [];
 
     constructor(appEl: HTMLDivElement) {
         this.appEl = appEl;
+        this.editorHelpDismissed = window.localStorage.getItem(EDITOR_HELP_DISMISSED_STORAGE_KEY) === 'true';
+        this.editorHelpState = { isOpen: !this.editorHelpDismissed, step: 0 };
         window.addEventListener('popstate', this.onBrowserNavigation);
         document.addEventListener('keydown', this.onKeyDown, true);
 
@@ -111,7 +116,14 @@ export class App {
 
         if (mode === 'tree') {
             const onChange = (nextJSON: ReducedJSON) => this.recordAnalysisChange(nextJSON);
-            const editor = new SyntaxEditor(json, onChange, editorContainerEls, zoomLevel, this.editorHelpState);
+            const editor = new SyntaxEditor(
+                json,
+                onChange,
+                editorContainerEls,
+                zoomLevel,
+                this.editorHelpState,
+                this.onEditorHelpDismissed
+            );
             this.activeEditor = editor;
             editor.mount(editorContainerEls.rootContainerEl);
             return;
@@ -139,6 +151,13 @@ export class App {
         this.activeTextEditor?.destroy();
         this.activeTextEditor = null;
     }
+
+    private onEditorHelpDismissed = () => {
+        if (this.editorHelpDismissed) return;
+
+        window.localStorage.setItem(EDITOR_HELP_DISMISSED_STORAGE_KEY, 'true');
+        this.editorHelpDismissed = true;
+    };
 
     private recordAnalysisChange(nextJSON: ReducedJSON) {
         if (!this.currentEditorJSON || sameReducedJSON(this.currentEditorJSON, nextJSON)) return;

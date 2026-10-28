@@ -1,4 +1,5 @@
 import { createIcon } from "../shared/icons.js";
+import { createButton } from "../shared/button.js";
 
 export function createEditorInterface(
     onReturnToSentenceScreen: () => void,
@@ -13,12 +14,11 @@ export function createEditorInterface(
 
     const modeSelectorEl = document.createElement('div');
     modeSelectorEl.className = 'editor-mode-selector';
-    const modeMenuButtonEl = createButton('', 'Abrir menú de edición');
+    const modeMenuButtonEl = createButton('Abrir menú de edición', 'M4 6h16M4 12h16M4 18h16', 'editor-menu-icon');
     modeMenuButtonEl.className = 'editor-mode-menu-button';
     modeMenuButtonEl.setAttribute('aria-haspopup', 'true');
     modeMenuButtonEl.setAttribute('aria-expanded', 'false');
     modeMenuButtonEl.setAttribute('aria-controls', 'editor-mode-dropdown');
-    modeMenuButtonEl.appendChild(createIcon('M4 6h16M4 12h16M4 18h16', 'editor-menu-icon'));
 
     const modeDropdownEl = document.createElement('div');
     modeDropdownEl.id = 'editor-mode-dropdown';
@@ -48,9 +48,11 @@ export function createEditorInterface(
     separatorEl.className = 'editor-mode-separator';
     separatorEl.setAttribute('role', 'separator');
 
-    const returnButtonEl = createButton('Volver', 'Volver a introducir oración');
+    const returnButtonEl = createButton('Volver a introducir oración', 'M19 12H5m0 0 6 6m-6-6 6-6', 'editor-mode-icon');
     returnButtonEl.className = 'editor-return-button';
-    returnButtonEl.prepend(createIcon('M19 12H5m0 0 6 6m-6-6 6-6', 'editor-mode-icon'));
+    const returnButtonLabelEl = document.createElement('span');
+    returnButtonLabelEl.textContent = 'Volver';
+    returnButtonEl.appendChild(returnButtonLabelEl);
     returnButtonEl.addEventListener('click', () => {
         closeModeDropdown();
         onBeforeAction();
@@ -86,16 +88,16 @@ export function createEditorInterface(
     const zoomControlsEl = document.createElement('div');
     zoomControlsEl.className = 'editor-floating-panel editor-zoom-controls';
 
-    const zoomOutButtonEl = createButton('', 'Reducir zoom (-)');
-    zoomOutButtonEl.appendChild(createIcon('M10.5 4.5a6 6 0 1 0 0 12a6 6 0 0 0 0-12 M15 15l5 5 M7.5 10.5h6', 'editor-action-icon'));
-    const zoomInButtonEl = createButton('', 'Aumentar zoom (+)');
-    zoomInButtonEl.appendChild(createIcon('M10.5 4.5a6 6 0 1 0 0 12a6 6 0 0 0 0-12 M15 15l5 5 M10.5 7.5v6 M7.5 10.5h6', 'editor-action-icon'));
+    const zoomOutButtonEl = createButton('Reducir zoom (-)', 'M10.5 4.5a6 6 0 1 0 0 12a6 6 0 0 0 0-12 M15 15l5 5 M7.5 10.5h6');
+    const zoomInButtonEl = createButton('Aumentar zoom (+)', 'M10.5 4.5a6 6 0 1 0 0 12a6 6 0 0 0 0-12 M15 15l5 5 M10.5 7.5v6 M7.5 10.5h6');
     zoomControlsEl.replaceChildren(zoomOutButtonEl, zoomInButtonEl);
 
     const textControlsEl = document.createElement('div');
     textControlsEl.className = 'editor-floating-panel editor-text-controls';
-    const compactButtonEl = createButton('Compactar', 'Compactar el análisis. Ideal para compartirlo con un LLM');
-    const indentButtonEl = createButton('Indentar', 'Embellecer e indentar el análisis');
+    const compactButtonEl = createButton('Compactar el análisis. Ideal para compartirlo con un LLM');
+    compactButtonEl.textContent = 'Compactar';
+    const indentButtonEl = createButton('Embellecer e indentar el análisis');
+    indentButtonEl.textContent = 'Indentar';
     textControlsEl.replaceChildren(compactButtonEl, indentButtonEl);
 
     const rootContainerEl = document.createElement('section');
@@ -118,10 +120,8 @@ export function createEditorInterface(
     const historyControlsEl = document.createElement('div');
     historyControlsEl.className = 'editor-floating-panel editor-history-controls';
 
-    const undoButtonEl = createButton('', 'Deshacer (Ctrl+z)');
-    undoButtonEl.appendChild(createIcon('M9 14l-4-4 4-4 M5 10h8a6 6 0 0 1 6 6v2', 'editor-action-icon'));
-    const redoButtonEl = createButton('', 'Rehacer (Ctrl+y)');
-    redoButtonEl.appendChild(createIcon('M15 6l4 4-4 4 M19 10h-8a6 6 0 0 0-6 6v2', 'editor-action-icon'));
+    const undoButtonEl = createButton('Deshacer (Ctrl+z)', 'M9 14l-4-4 4-4 M5 10h8a6 6 0 0 1 6 6v2');
+    const redoButtonEl = createButton('Rehacer (Ctrl+y)', 'M15 6l4 4-4 4 M19 10h-8a6 6 0 0 0-6 6v2');
     undoButtonEl.addEventListener('click', onBeforeAction);
     redoButtonEl.addEventListener('click', onBeforeAction);
     historyControlsEl.replaceChildren(undoButtonEl, redoButtonEl);
@@ -150,24 +150,15 @@ export function createEditorInterface(
     };
 }
 
-function createButton(text: string, label: string): HTMLButtonElement {
-    const buttonEl = document.createElement('button');
-    buttonEl.type = 'button';
-    buttonEl.textContent = text;
-    buttonEl.title = label;
-    buttonEl.setAttribute('aria-label', label);
-    return buttonEl;
-}
-
 function createModeButton(label: string, iconPath: string, isActive: boolean): HTMLButtonElement {
-    const buttonEl = createButton(label, `Cambiar al editor de ${label.toLowerCase()}`);
+    const buttonEl = createButton(`Cambiar al editor de ${label.toLowerCase()}`, iconPath, 'editor-mode-icon');
     buttonEl.className = 'editor-mode-option';
     buttonEl.setAttribute('aria-pressed', String(isActive));
 
     const labelEl = document.createElement('span');
     labelEl.textContent = label;
     const checkEl = createIcon('M5 12l4 4L19 6', 'editor-mode-check');
-    buttonEl.replaceChildren(createIcon(iconPath, 'editor-mode-icon'), labelEl, checkEl);
+    buttonEl.append(labelEl, checkEl);
     return buttonEl;
 }
 

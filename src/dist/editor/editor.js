@@ -4,7 +4,7 @@ import { createIcon } from "../shared/icons.js";
 import { createEditorHelp } from "./editor-help.js";
 const ZOOM_STEPS = [0.25, 0.3, 0.4, 0.5, 0.6, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4];
 export class SyntaxEditor {
-    constructor(json, onChange = () => { }, controls, initialZoom = 1, initialHelpState = { isOpen: true, step: 0 }) {
+    constructor(json, onChange = () => { }, controls, initialZoom = 1, initialHelpState = { isOpen: true, step: 0 }, onHelpDismissed = () => { }) {
         this.supportsHistory = true;
         this.zoom = 1;
         this.notificationTimeout = null;
@@ -233,7 +233,7 @@ export class SyntaxEditor {
         this.selectionActionsEl = this.createSelectionActions();
         this.onChange = onChange;
         this.controls = controls;
-        this.editorHelp = initialHelpState === null ? null : createEditorHelp(initialHelpState);
+        this.editorHelp = initialHelpState === null ? null : createEditorHelp(initialHelpState, onHelpDismissed);
     }
     mount(container) {
         if (this.editorHelp) {

@@ -5,6 +5,7 @@ import { reducedJSONToSyntaxRepr } from "./editor/tree-format.js";
 import { TextSyntaxEditor } from "./editor/text-editor.js";
 import { createEnterSentenceEl } from "./enter-sentence/enter-sentence-screen.js";
 import { clearEditorJSONFromURL, getEditorJSONFromURL, setEditorJSONInURL } from "./shared/url.js";
+const EDITOR_HELP_DISMISSED_STORAGE_KEY = 'clataxis:editor-help-dismissed';
 export class App {
     constructor(appEl) {
         this.activeScreen = 'sentence';
@@ -13,6 +14,7 @@ export class App {
         this.currentEditorJSON = null;
         this.editorMode = 'tree';
         this.editorHelpState = { isOpen: true, step: 0 };
+        this.editorHelpDismissed = false;
         this.undoStack = [];
         this.redoStack = [];
         this.onBrowserNavigation = () => {
@@ -23,6 +25,12 @@ export class App {
             else {
                 this.setScreen('sentence', undefined, 'none');
             }
+        };
+        this.onEditorHelpDismissed = () => {
+            if (this.editorHelpDismissed)
+                return;
+            window.localStorage.setItem(EDITOR_HELP_DISMISSED_STORAGE_KEY, 'true');
+            this.editorHelpDismissed = true;
         };
         this.undo = () => {
             const previous = this.undoStack.pop();
@@ -70,6 +78,8 @@ export class App {
             }
         };
         this.appEl = appEl;
+        this.editorHelpDismissed = window.localStorage.getItem(EDITOR_HELP_DISMISSED_STORAGE_KEY) === 'true';
+        this.editorHelpState = { isOpen: !this.editorHelpDismissed, step: 0 };
         window.addEventListener('popstate', this.onBrowserNavigation);
         document.addEventListener('keydown', this.onKeyDown, true);
         const editorJSON = getEditorJSONFromURL();
@@ -141,7 +151,7 @@ export class App {
         }
         if (mode === 'tree') {
             const onChange = (nextJSON) => this.recordAnalysisChange(nextJSON);
-            const editor = new SyntaxEditor(json, onChange, editorContainerEls, zoomLevel, this.editorHelpState);
+            const editor = new SyntaxEditor(json, onChange, editorContainerEls, zoomLevel, this.editorHelpState, this.onEditorHelpDismissed);
             this.activeEditor = editor;
             editor.mount(editorContainerEls.rootContainerEl);
             return;

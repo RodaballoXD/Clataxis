@@ -1,4 +1,4 @@
-import { createIcon } from "../shared/icons.js";
+import { createButton } from "../shared/button.js";
 const REOPEN_HINT_DURATION_MS = 4000;
 const EDITOR_GUIDE_STEPS = [
     {
@@ -30,20 +30,18 @@ const EDITOR_GUIDE_STEPS = [
         description: 'Ctrl + Z para deshacer, Ctrl + Y para rehacer, Entrar para terminar una edición... Coloca el cursor sobre cualquier botón para ver su atajo de teclado.'
     }
 ];
-export function createEditorHelp(initialState) {
+export function createEditorHelp(initialState, onClose) {
     const containerEl = document.createElement('div');
     containerEl.className = 'editor-help';
     const panelEl = document.createElement('section');
     panelEl.id = 'editor-help-panel';
     panelEl.className = 'editor-help-panel';
     panelEl.setAttribute('aria-labelledby', 'editor-help-heading');
-    const closeButtonEl = document.createElement('button');
+    const closeButtonEl = createButton('Cerrar guía del editor', 'M6 6l12 12M18 6 6 18', 'editor-help-icon');
     closeButtonEl.className = 'editor-help-close';
-    closeButtonEl.type = 'button';
-    closeButtonEl.appendChild(createIcon('M6 6l12 12M18 6 6 18', 'editor-help-icon'));
-    closeButtonEl.setAttribute('aria-label', 'Cerrar guía del editor');
     closeButtonEl.addEventListener('click', () => {
         setOpen(false);
+        onClose();
         helpButtonEl.focus();
     });
     const progressEl = document.createElement('p');
@@ -56,24 +54,14 @@ export function createEditorHelp(initialState) {
     descriptionEl.className = 'editor-help-description';
     descriptionEl.setAttribute('aria-live', 'polite');
     descriptionEl.setAttribute('aria-atomic', 'true');
-    const previousButtonEl = document.createElement('button');
+    const previousButtonEl = createButton('Pista anterior', 'M15 18l-6-6 6-6', 'editor-help-icon');
     previousButtonEl.className = 'editor-help-step editor-help-previous';
-    previousButtonEl.type = 'button';
-    previousButtonEl.appendChild(createIcon('M15 18l-6-6 6-6', 'editor-help-icon'));
-    previousButtonEl.setAttribute('aria-label', 'Pista anterior');
     previousButtonEl.addEventListener('click', () => showStep(currentStep - 1));
-    const nextButtonEl = document.createElement('button');
+    const nextButtonEl = createButton('Pista siguiente', 'M9 18l6-6-6-6', 'editor-help-icon');
     nextButtonEl.className = 'editor-help-step editor-help-next';
-    nextButtonEl.type = 'button';
-    nextButtonEl.appendChild(createIcon('M9 18l6-6-6-6', 'editor-help-icon'));
-    nextButtonEl.setAttribute('aria-label', 'Pista siguiente');
     nextButtonEl.addEventListener('click', () => showStep(currentStep + 1));
-    const helpButtonEl = document.createElement('button');
+    const helpButtonEl = createButton('Abrir guía del editor', 'M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3m-.01 4h.01', 'editor-help-icon');
     helpButtonEl.className = 'editor-help-button';
-    helpButtonEl.type = 'button';
-    helpButtonEl.appendChild(createIcon('M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3m-.01 4h.01', 'editor-help-icon'));
-    helpButtonEl.setAttribute('aria-label', 'Abrir guía del editor');
-    helpButtonEl.title = 'Abrir guía del editor';
     helpButtonEl.setAttribute('aria-controls', panelEl.id);
     helpButtonEl.addEventListener('click', () => {
         setOpen(true);
