@@ -473,8 +473,8 @@
 
     .editor-help-panel {
         width: calc(100% - 1.5rem);
-        min-height: 14rem;
-        padding: 1.25rem 3rem calc(1.25rem + env(safe-area-inset-bottom));
+        min-height: 16rem;
+        padding: 1.25rem 1rem calc(4.5rem + env(safe-area-inset-bottom));
     }
 
     .editor-help-close {
@@ -483,11 +483,17 @@
     }
 
     .editor-help-previous {
-        left: 0.5rem;
+        top: auto;
+        bottom: calc(0.75rem + env(safe-area-inset-bottom));
+        left: 1rem;
+        transform: none;
     }
 
     .editor-help-next {
-        right: 0.5rem;
+        top: auto;
+        right: 1rem;
+        bottom: calc(0.75rem + env(safe-area-inset-bottom));
+        transform: none;
     }
 
     .editor-help-button {
