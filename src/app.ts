@@ -1,4 +1,4 @@
-import { createEditorInterface, type EditorMode } from "./editor/editor-screen.js";
+import { createEditorInterface, type EditorInterfaceEls, type EditorMode } from "./editor/editor-screen.js";
 import { SyntaxEditor } from "./editor/editor.js";
 import type { ReducedJSON } from "./editor/tree.js";
 import { sentenceToReducedJSON } from "./editor/tree.js";
@@ -15,6 +15,7 @@ export class App {
     private currentEditorJSON: ReducedJSON | null = null;
     private editorMode: EditorMode = 'tree';
     private editorHelpOpen = true;
+    private editorHelp: EditorInterfaceEls['editorHelp'] | null = null;
     private undoStack: ReducedJSON[] = [];
     private redoStack: ReducedJSON[] = [];
 
@@ -37,6 +38,7 @@ export class App {
         this.activeEditor = null;
         this.activeTextEditor?.destroy();
         this.activeTextEditor = null;
+        this.editorHelp = null;
         this.undoStack = [];
         this.redoStack = [];
 
@@ -113,9 +115,11 @@ export class App {
                 }
             }
         );
+        this.editorHelp = editorContainerEls.editorHelp;
         editorContainerEls.undoButtonEl.addEventListener('click', this.undo);
         editorContainerEls.redoButtonEl.addEventListener('click', this.redo);
         this.appEl.appendChild(editorContainerEls.interfaceContainerEl);
+        if (this.editorHelpOpen) editorContainerEls.editorHelp.focus();
         this.updateHistoryButtons(editorContainerEls.undoButtonEl, editorContainerEls.redoButtonEl);
         if (urlMode !== 'none') {
             setEditorJSONInURL(json, urlMode);
@@ -184,6 +188,7 @@ export class App {
     }
 
     private onKeyDown = (event: KeyboardEvent) => {
+        if (this.editorMode === 'text' && this.editorHelp?.handleKeyDown(event)) return;
         if (!(event.ctrlKey || event.metaKey)) return;
         if (this.editorMode !== 'text') {
             if (!this.activeEditor || this.activeEditor.state.editing.isEditing) return;

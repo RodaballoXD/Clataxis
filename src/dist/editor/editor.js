@@ -59,6 +59,8 @@ export class SyntaxEditor {
                 this.handleEditingFieldNavigation(event);
                 return;
             }
+            if (this.controls.editorHelp.handleKeyDown(event))
+                return;
             if (event.key === 'Escape' && this.resizeDrag !== null) {
                 event.preventDefault();
                 this.cancelResizeDrag();

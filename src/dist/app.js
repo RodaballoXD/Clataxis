@@ -13,6 +13,7 @@ export class App {
         this.currentEditorJSON = null;
         this.editorMode = 'tree';
         this.editorHelpOpen = true;
+        this.editorHelp = null;
         this.undoStack = [];
         this.redoStack = [];
         this.onBrowserNavigation = () => {
@@ -43,6 +44,8 @@ export class App {
             this.mountEditorMode(this.editorMode);
         };
         this.onKeyDown = (event) => {
+            if (this.editorMode === 'text' && this.editorHelp?.handleKeyDown(event))
+                return;
             if (!(event.ctrlKey || event.metaKey))
                 return;
             if (this.editorMode !== 'text') {
@@ -86,6 +89,7 @@ export class App {
         this.activeEditor = null;
         this.activeTextEditor?.destroy();
         this.activeTextEditor = null;
+        this.editorHelp = null;
         this.undoStack = [];
         this.redoStack = [];
         this.appEl.replaceChildren();
@@ -144,9 +148,12 @@ export class App {
                 this.editorHelpOpen = isOpen;
             }
         });
+        this.editorHelp = editorContainerEls.editorHelp;
         editorContainerEls.undoButtonEl.addEventListener('click', this.undo);
         editorContainerEls.redoButtonEl.addEventListener('click', this.redo);
         this.appEl.appendChild(editorContainerEls.interfaceContainerEl);
+        if (this.editorHelpOpen)
+            editorContainerEls.editorHelp.focus();
         this.updateHistoryButtons(editorContainerEls.undoButtonEl, editorContainerEls.redoButtonEl);
         if (urlMode !== 'none') {
             setEditorJSONInURL(json, urlMode);

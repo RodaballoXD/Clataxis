@@ -7,6 +7,12 @@ export interface EditorHelpOptions {
     onOpenChange: (isOpen: boolean) => void;
 }
 
+export interface EditorHelpView {
+    element: HTMLDivElement;
+    focus(): void;
+    handleKeyDown(event: KeyboardEvent): boolean;
+}
+
 interface EditorGuideStep {
     heading: string;
     description: string;
@@ -35,7 +41,7 @@ const EDITOR_GUIDE_STEPS: readonly EditorGuideStep[] = [
     }
 ];
 
-export function createEditorHelp(options: EditorHelpOptions): HTMLDivElement {
+export function createEditorHelp(options: EditorHelpOptions): EditorHelpView {
     const containerEl = document.createElement('div');
     containerEl.className = 'editor-help';
 
@@ -121,6 +127,25 @@ export function createEditorHelp(options: EditorHelpOptions): HTMLDivElement {
         nextButtonEl.disabled = currentStep === EDITOR_GUIDE_STEPS.length - 1;
     }
 
+    function handleKeyDown(event: KeyboardEvent): boolean {
+        const targetIsEditable = event.target instanceof Element
+            && event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), .monaco-editor');
+        if (!isOpen || targetIsEditable) {
+            return false;
+        }
+
+        if (event.key === 'ArrowLeft') {
+            showStep(currentStep - 1);
+        } else if (event.key === 'ArrowRight') {
+            showStep(currentStep + 1);
+        } else {
+            return false;
+        }
+
+        event.preventDefault();
+        return true;
+    }
+
     function setOpen(nextIsOpen: boolean) {
         if (isOpen === nextIsOpen) return;
 
@@ -159,5 +184,9 @@ export function createEditorHelp(options: EditorHelpOptions): HTMLDivElement {
     reopenHintEl.hidden = true;
     if (!isOpen) showReopenHint();
 
-    return containerEl;
+    return {
+        element: containerEl,
+        focus: () => closeButtonEl.focus(),
+        handleKeyDown
+    };
 }

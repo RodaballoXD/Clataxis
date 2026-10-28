@@ -105,8 +105,8 @@ export function createEditorInterface(onReturnToSentenceScreen, onModeChange, mo
     redoButtonEl.addEventListener('click', onBeforeAction);
     historyControlsEl.replaceChildren(undoButtonEl, redoButtonEl);
     historyPanelEl.replaceChildren(notificationEl, historyControlsEl);
-    const editorHelpEl = createEditorHelp(helpOptions);
-    interfaceContainerEl.replaceChildren(modeSelectorEl, zoomControlsEl, textControlsEl, guidedPanelEl, rootContainerEl, historyPanelEl, editorHelpEl);
+    const editorHelp = createEditorHelp(helpOptions);
+    interfaceContainerEl.replaceChildren(modeSelectorEl, zoomControlsEl, textControlsEl, guidedPanelEl, rootContainerEl, historyPanelEl, editorHelp.element);
     return {
         interfaceContainerEl,
         rootContainerEl,
@@ -117,7 +117,8 @@ export function createEditorInterface(onReturnToSentenceScreen, onModeChange, mo
         indentButtonEl,
         undoButtonEl,
         redoButtonEl,
-        notificationEl
+        notificationEl,
+        editorHelp
     };
 }
 function createButton(text, label) {

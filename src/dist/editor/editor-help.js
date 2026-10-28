@@ -88,6 +88,24 @@ export function createEditorHelp(options) {
         previousButtonEl.disabled = currentStep === 0;
         nextButtonEl.disabled = currentStep === EDITOR_GUIDE_STEPS.length - 1;
     }
+    function handleKeyDown(event) {
+        const targetIsEditable = event.target instanceof Element
+            && event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), .monaco-editor');
+        if (!isOpen || targetIsEditable) {
+            return false;
+        }
+        if (event.key === 'ArrowLeft') {
+            showStep(currentStep - 1);
+        }
+        else if (event.key === 'ArrowRight') {
+            showStep(currentStep + 1);
+        }
+        else {
+            return false;
+        }
+        event.preventDefault();
+        return true;
+    }
     function setOpen(nextIsOpen) {
         if (isOpen === nextIsOpen)
             return;
@@ -124,6 +142,10 @@ export function createEditorHelp(options) {
     reopenHintEl.hidden = true;
     if (!isOpen)
         showReopenHint();
-    return containerEl;
+    return {
+        element: containerEl,
+        focus: () => closeButtonEl.focus(),
+        handleKeyDown
+    };
 }
 //# sourceMappingURL=editor-help.js.map
