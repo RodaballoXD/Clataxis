@@ -173,6 +173,7 @@ export class FieldAutocomplete {
             optionEl.setAttribute('role', 'option');
             optionEl.setAttribute('aria-selected', String(index === this.activeIndex));
             optionEl.setAttribute('aria-label', `${suggestion.value} — ${suggestion.fullName} (${suggestion.field})`);
+            optionEl.title = 'Aceptar sugerencia (Tab)';
 
             const valueEl = document.createElement('span');
             valueEl.className = 'autocomplete-option-value';

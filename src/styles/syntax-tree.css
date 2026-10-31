@@ -227,11 +227,11 @@ syntax-node:hover:not(.selected):not(:has(.children syntax-node:hover, .children
     margin: 0 0.25rem;
 }
 
-.category, .category-input {
+.category, .category-input, .category-input::placeholder {
     color: #7a4a1a;
 }
 
-.function, .function-input {
+.function, .function-input, .function-input::placeholder {
     color: #2f6b7f;
 }
 

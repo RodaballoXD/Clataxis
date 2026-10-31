@@ -27,7 +27,7 @@ export function createEditorInterface(
     modeDropdownEl.setAttribute('role', 'group');
     modeDropdownEl.setAttribute('aria-label', 'Modos de edición');
 
-    const treeModeButtonEl = createModeButton('Árbol', 'M12 4v5m0 0H7m5 0h5M7 9v4m10-4v4M7 13v3m10-3v3M4 16h6m4 0h6', mode === 'tree');
+    const treeModeButtonEl = createModeButton('Árbol', 'M12 20v-5m0 0H7m5 0h5M7 15v-4m10 0v4M7 11v-3m10 0v3M4 8h6m4 0h6', mode === 'tree');
     const textModeButtonEl = createModeButton('Texto', 'M4 6h16M4 10h16M4 14h12M4 18h12', mode === 'text');
     treeModeButtonEl.addEventListener('click', () => {
         closeModeDropdown();

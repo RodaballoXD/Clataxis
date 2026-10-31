@@ -9,6 +9,7 @@ rmSync(siteDirectory, { recursive: true, force: true });
 mkdirSync(siteDirectory, { recursive: true });
 
 copyFileSync(resolve(projectRoot, 'src', 'index.html'), resolve(siteDirectory, 'index.html'));
+copyFileSync(resolve(projectRoot, 'src', 'favicon.svg'), resolve(siteDirectory, 'favicon.svg'));
 copyDirectory(resolve(projectRoot, 'src', 'styles'), resolve(siteDirectory, 'styles'));
 copyDirectory(resolve(projectRoot, 'src', 'dist'), resolve(siteDirectory, 'dist'));
 copyDirectory(resolve(projectRoot, 'node_modules', 'monaco-editor', 'min', 'vs'), resolve(siteDirectory, 'vs'));
