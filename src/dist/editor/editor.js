@@ -1,3 +1,4 @@
+import { SyntaxNodeEl } from "./elements.js";
 import { SyntaxTree } from "./tree.js";
 import { FieldAutocomplete } from "./autocomplete.js";
 import { createIcon } from "../shared/icons.js";
@@ -8,6 +9,7 @@ export class SyntaxEditor {
         this.supportsHistory = true;
         this.zoom = 1;
         this.notificationTimeout = null;
+        this.analysisPositionAnimationFrame = null;
         this.autocomplete = new FieldAutocomplete();
         this.elementMapping = new Map();
         this.autoScrollAnimationFrame = null;
@@ -31,6 +33,14 @@ export class SyntaxEditor {
                 didMove: false,
                 startMousePosition: null
             }
+        };
+        this.scheduleAnalysisPositionUpdate = () => {
+            if (this.analysisPositionAnimationFrame !== null)
+                return;
+            this.analysisPositionAnimationFrame = requestAnimationFrame(() => {
+                this.analysisPositionAnimationFrame = null;
+                this.updateAnalysisPositions();
+            });
         };
         this.onPointerCancel = (event) => {
             if (this.resizeDrag?.pointerId === event.pointerId) {
@@ -269,6 +279,15 @@ export class SyntaxEditor {
         this.appEl.removeEventListener('pointermove', this.onPointerMove);
         this.appEl.removeEventListener('pointerup', this.onPointerUp);
         this.appEl.removeEventListener('pointercancel', this.onPointerCancel);
+        this.appEl.removeEventListener('scroll', this.scheduleAnalysisPositionUpdate);
+        this.appEl.removeEventListener('input', this.scheduleAnalysisPositionUpdate);
+        window.removeEventListener('resize', this.scheduleAnalysisPositionUpdate);
+        window.visualViewport?.removeEventListener('scroll', this.scheduleAnalysisPositionUpdate);
+        window.visualViewport?.removeEventListener('resize', this.scheduleAnalysisPositionUpdate);
+        if (this.analysisPositionAnimationFrame !== null) {
+            cancelAnimationFrame(this.analysisPositionAnimationFrame);
+            this.analysisPositionAnimationFrame = null;
+        }
         document.removeEventListener('keydown', this.onKeyDown, true);
         this.autocomplete.destroy();
         if (this.notificationTimeout !== null) {
@@ -277,13 +296,25 @@ export class SyntaxEditor {
     }
     renderTree() {
         const json = this.tree.getJSON();
-        this.elementMapping = this.rootEl.build(json);
+        this.rebuildTreeElements(json);
         this.onTreeRendered();
         if (this.state.selectedNodeId !== null) {
             this.selectNode(this.state.selectedNodeId);
         }
     }
     onTreeRendered() { }
+    rebuildTreeElements(root) {
+        const scrollLeft = this.appEl.scrollLeft;
+        const scrollTop = this.appEl.scrollTop;
+        try {
+            this.elementMapping = this.rootEl.build(root);
+        }
+        finally {
+            this.appEl.scrollLeft = scrollLeft;
+            this.appEl.scrollTop = scrollTop;
+        }
+        this.updateAnalysisPositions();
+    }
     notifyChange() {
         this.onChange(this.tree.toReducedJSON());
     }
@@ -339,6 +370,7 @@ export class SyntaxEditor {
         const scrollbarProgress = this.getScrollbarProgress();
         this.rootEl.style.zoom = String(this.zoom);
         this.appEl.scrollLeft = scrollbarProgress * (this.appEl.scrollWidth - this.appEl.clientWidth);
+        this.updateAnalysisPositions();
         this.showNotification(`Zoom ${this.zoom.toFixed(2).replace(/\.0$/, '')}x`);
     }
     getScrollbarProgress() {
@@ -353,7 +385,21 @@ export class SyntaxEditor {
         this.appEl.addEventListener('pointermove', this.onPointerMove);
         this.appEl.addEventListener('pointerup', this.onPointerUp);
         this.appEl.addEventListener('pointercancel', this.onPointerCancel);
+        this.appEl.addEventListener('scroll', this.scheduleAnalysisPositionUpdate, { passive: true });
+        this.appEl.addEventListener('input', this.scheduleAnalysisPositionUpdate);
+        window.addEventListener('resize', this.scheduleAnalysisPositionUpdate);
+        window.visualViewport?.addEventListener('scroll', this.scheduleAnalysisPositionUpdate);
+        window.visualViewport?.addEventListener('resize', this.scheduleAnalysisPositionUpdate);
         document.addEventListener('keydown', this.onKeyDown, true);
+    }
+    updateAnalysisPositions() {
+        const viewportLeft = window.visualViewport?.offsetLeft ?? 0;
+        const viewportRight = viewportLeft + (window.visualViewport?.width ?? document.documentElement.clientWidth);
+        for (const element of this.elementMapping.values()) {
+            if (element instanceof SyntaxNodeEl) {
+                element.updateAnalysisPosition(viewportLeft, viewportRight);
+            }
+        }
     }
     createSelectionActions() {
         const actionsEl = document.createElement('div');
@@ -533,7 +579,7 @@ export class SyntaxEditor {
     }
     setTreePreview(preview) {
         this.treePreview = preview;
-        this.elementMapping = this.rootEl.build(preview.tree.getJSON());
+        this.rebuildTreeElements(preview.tree.getJSON());
         this.rootEl.classList.add('tree-preview');
         if (this.resizeDrag) {
             const nodeEl = this.elementMapping.get(this.resizeDrag.nodeId);
@@ -826,6 +872,7 @@ export class SyntaxEditor {
             type: element.type,
             field: null
         };
+        this.scheduleAnalysisPositionUpdate();
         this.autocomplete.connect(this.state.editing.elements, (input) => this.focusNextEditingInput(input));
         if (preferredField !== undefined) {
             field = preferredField;

@@ -59,11 +59,24 @@ export class RootNodeEl extends BoxNodeEl {
 export class SyntaxNodeEl extends BoxNodeEl {
     protected childrenEl: HTMLDivElement;
     private analysisEl: HTMLDivElement;
+    private analysisTextEl: HTMLDivElement;
     private analysisElInside: AnalysisEls;
+    private analysisOffsetPercent = 0;
 
     constructor() {
         super();
-        this.childrenEl = document.createElement('div'); this.analysisEl = document.createElement('div'); this.analysisElInside = { categoryEl: document.createElement('span'), slashEl: document.createElement('span'), functionEl: document.createElement('span'), commentEl: document.createElement('span'), catInputEl: document.createElement('input'), funcInputEl: document.createElement('input'), commentInputEl: document.createElement('input') };
+        this.childrenEl = document.createElement('div');
+        this.analysisEl = document.createElement('div');
+        this.analysisTextEl = document.createElement('div');
+        this.analysisElInside = {
+            categoryEl: document.createElement('span'),
+            slashEl: document.createElement('span'),
+            functionEl: document.createElement('span'),
+            commentEl: document.createElement('span'),
+            catInputEl: document.createElement('input'),
+            funcInputEl: document.createElement('input'),
+            commentInputEl: document.createElement('input')
+        };
     }
 
     connectedCallback() {
@@ -75,21 +88,23 @@ export class SyntaxNodeEl extends BoxNodeEl {
                     <button class="resize-handle end" type="button" aria-label="Redimensionar desde el final" title="Arrastrar para redimensionar desde el final"></button>
                 </div>
                 <div class="analysis">
-                    <input class="category-input" placeholder="cat" spellcheck="false">
+                    <div class="analysis-text">
+                        <span class="category"></span>
+                        <span class="slash" style="display: none">/</span>
+                        <span class="function"></span>
+                        <span class="comment" style="display: none"></span>
 
-                    <span class="category"></span>
-                    <span class="slash" style="display: none">/</span>
-                    <span class="function"></span>
-                    <span class="comment" style="display: none"></span>
-
-                    <input class="function-input" placeholder="func" spellcheck="false">
-                    <input class="comment-input" placeholder="com" spellcheck="false">
+                        <input class="category-input" placeholder="cat" spellcheck="false">
+                        <input class="function-input" placeholder="func" spellcheck="false">
+                        <input class="comment-input" placeholder="com" spellcheck="false">
+                    </div>
                 </div>
             </div>
         `;
 
         this.childrenEl = this.querySelector('.children') as HTMLDivElement;
         this.analysisEl = this.querySelector('.analysis') as HTMLDivElement;
+        this.analysisTextEl = this.analysisEl.querySelector('.analysis-text') as HTMLDivElement;
         this.analysisElInside = {
             categoryEl: this.analysisEl.querySelector('.category') as HTMLSpanElement,
             slashEl: this.analysisEl.querySelector('.slash') as HTMLSpanElement,
@@ -134,6 +149,36 @@ export class SyntaxNodeEl extends BoxNodeEl {
         this.analysisElInside.categoryEl.textContent = newCateg ?? '';
         this.analysisElInside.functionEl.textContent = newFunc ?? '';
         this.analysisElInside.commentEl.textContent = newComment ?? '';
+    }
+
+    updateAnalysisPosition(viewportLeft: number, viewportRight: number) {
+        const analysisRect = this.analysisEl.getBoundingClientRect();
+        const textRect = this.analysisTextEl.getBoundingClientRect();
+        if (textRect.width === 0) return;
+
+        const analysisStyle = getComputedStyle(this.analysisEl);
+        const scale = this.analysisEl.offsetWidth > 0 ? analysisRect.width / this.analysisEl.offsetWidth : 1;
+        const containerLeft = analysisRect.left + (Number.parseFloat(analysisStyle.paddingLeft) || 0) * scale;
+        const containerRight = analysisRect.right - (Number.parseFloat(analysisStyle.paddingRight) || 0) * scale;
+        const currentOffset = this.analysisOffsetPercent * textRect.width / 100;
+        const baseLeft = textRect.left - currentOffset;
+        const baseRight = textRect.right - currentOffset;
+
+        const viewportInset = Math.min(12, (viewportRight - viewportLeft) / 2);
+        const visibleLeft = viewportLeft + viewportInset;
+        const visibleRight = viewportRight - viewportInset;
+
+        let nextOffset = 0;
+        if (baseLeft < visibleLeft) nextOffset = visibleLeft - baseLeft;
+        if (baseRight + nextOffset > visibleRight) nextOffset = visibleRight - baseRight;
+
+        const minOffset = containerLeft - baseLeft;
+        const maxOffset = containerRight - baseRight;
+        nextOffset = Math.min(Math.max(nextOffset, minOffset), maxOffset);
+
+        this.analysisOffsetPercent = nextOffset / textRect.width * 100;
+        this.analysisTextEl.style.transform = `translateX(${this.analysisOffsetPercent}%)`;
+        this.analysisTextEl.classList.toggle('is-shifted', Math.abs(nextOffset) > 0.5);
     }
 
     startEdit(): InputFieldEls {

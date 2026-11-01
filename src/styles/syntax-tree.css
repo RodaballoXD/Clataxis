@@ -8,7 +8,8 @@ root-node {
     flex-grow: 1;
 }
 
-#editor-container .editing > input {
+#editor-container .analysis.editing .analysis-text > input,
+#editor-container .word-node.editing > input {
     display: block;
     outline: solid 0.1rem #00000076;
     border-radius: 0.5rem;
@@ -23,7 +24,8 @@ root-node {
     
 }
 
-#editor-container .editing > input:placeholder-shown {
+#editor-container .analysis.editing .analysis-text > input:placeholder-shown,
+#editor-container .word-node.editing > input:placeholder-shown {
     opacity: 0.5;
     font-size: 1.2rem;
 }
@@ -199,8 +201,12 @@ syntax-node:hover:not(.selected):not(:has(.children syntax-node:hover, .children
     outline-offset: 2px;
 }
 
-.editing > span:not(.slash),
-.editing > div {
+.analysis.editing .analysis-text > span:not(.slash) {
+    display: none;
+}
+
+.word-node.editing > .word-comment,
+.word-node.editing > .word {
     display: none;
 }
 
@@ -220,6 +226,43 @@ syntax-node:hover:not(.selected):not(:has(.children syntax-node:hover, .children
     font-weight: 670;
     font-size: 1.6rem;
     min-height: 2.4rem;
+    overflow: hidden;
+}
+
+.analysis-text {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: max-content;
+    max-width: 100%;
+}
+
+.analysis:not(.editing) .analysis-text.is-shifted {
+    opacity: 0.5;
+}
+
+.analysis-text > .category,
+.analysis-text > .category-input {
+    order: 0;
+}
+
+.analysis-text > .slash {
+    order: 1;
+}
+
+.analysis-text > .function,
+.analysis-text > .function-input {
+    order: 2;
+}
+
+.analysis-text > .comment,
+.analysis-text > .comment-input {
+    order: 3;
+}
+
+.analysis-text > input {
+    box-sizing: border-box;
+    max-width: 100%;
 }
 
 .slash {
@@ -237,6 +280,9 @@ syntax-node:hover:not(.selected):not(:has(.children syntax-node:hover, .children
 
 .function, .category, .comment {
     width: max-content;
+    max-width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 

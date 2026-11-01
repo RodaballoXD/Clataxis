@@ -1,6 +1,6 @@
 import { AnyNodeEl, InputFieldEls, RootNodeEl, SyntaxNodeEl, WordNodeData, WordNodeEl } from "./elements.js";
 import type { EditorInterfaceEls } from "./editor-screen.js";
-import type { AnalysisData, NodeId, ReducedJSON, SyntaxNode, WordNode } from "./tree.js";
+import type { AnalysisData, NodeId, ReducedJSON, RootNode, SyntaxNode, WordNode } from "./tree.js";
 import { SyntaxTree } from "./tree.js";
 import { FieldAutocomplete } from "./autocomplete.js";
 import { createIcon } from "../shared/icons.js";
@@ -19,6 +19,7 @@ export class SyntaxEditor {
     private editorHelp: EditorHelpView | null;
     private zoom: number = 1;
     private notificationTimeout: number | null = null;
+    private analysisPositionAnimationFrame: number | null = null;
     private autocomplete = new FieldAutocomplete();
     protected elementMapping: Map<NodeId, AnyNodeEl> = new Map();
     private autoScrollAnimationFrame: number | null = null;
@@ -99,6 +100,15 @@ export class SyntaxEditor {
         this.appEl.removeEventListener('pointermove', this.onPointerMove);
         this.appEl.removeEventListener('pointerup', this.onPointerUp);
         this.appEl.removeEventListener('pointercancel', this.onPointerCancel);
+        this.appEl.removeEventListener('scroll', this.scheduleAnalysisPositionUpdate);
+        this.appEl.removeEventListener('input', this.scheduleAnalysisPositionUpdate);
+        window.removeEventListener('resize', this.scheduleAnalysisPositionUpdate);
+        window.visualViewport?.removeEventListener('scroll', this.scheduleAnalysisPositionUpdate);
+        window.visualViewport?.removeEventListener('resize', this.scheduleAnalysisPositionUpdate);
+        if (this.analysisPositionAnimationFrame !== null) {
+            cancelAnimationFrame(this.analysisPositionAnimationFrame);
+            this.analysisPositionAnimationFrame = null;
+        }
         document.removeEventListener('keydown', this.onKeyDown, true);
         this.autocomplete.destroy();
         if (this.notificationTimeout !== null) {
@@ -108,7 +118,7 @@ export class SyntaxEditor {
 
     protected renderTree() {
         const json = this.tree.getJSON();
-        this.elementMapping = this.rootEl.build(json);
+        this.rebuildTreeElements(json);
         this.onTreeRendered();
         if (this.state.selectedNodeId !== null) {
             this.selectNode(this.state.selectedNodeId);
@@ -116,6 +126,20 @@ export class SyntaxEditor {
     }
 
     protected onTreeRendered() {}
+
+    private rebuildTreeElements(root: RootNode) {
+        const scrollLeft = this.appEl.scrollLeft;
+        const scrollTop = this.appEl.scrollTop;
+
+        try {
+            this.elementMapping = this.rootEl.build(root);
+        } finally {
+            this.appEl.scrollLeft = scrollLeft;
+            this.appEl.scrollTop = scrollTop;
+        }
+
+        this.updateAnalysisPositions();
+    }
 
     private notifyChange() {
         this.onChange(this.tree.toReducedJSON());
@@ -185,6 +209,7 @@ export class SyntaxEditor {
         const scrollbarProgress = this.getScrollbarProgress();
         this.rootEl.style.zoom = String(this.zoom);
         this.appEl.scrollLeft = scrollbarProgress * (this.appEl.scrollWidth - this.appEl.clientWidth);
+        this.updateAnalysisPositions();
         this.showNotification(`Zoom ${this.zoom.toFixed(2).replace(/\.0$/, '')}x`);
     }
 
@@ -200,7 +225,30 @@ export class SyntaxEditor {
         this.appEl.addEventListener('pointermove', this.onPointerMove);
         this.appEl.addEventListener('pointerup', this.onPointerUp);
         this.appEl.addEventListener('pointercancel', this.onPointerCancel);
+        this.appEl.addEventListener('scroll', this.scheduleAnalysisPositionUpdate, { passive: true });
+        this.appEl.addEventListener('input', this.scheduleAnalysisPositionUpdate);
+        window.addEventListener('resize', this.scheduleAnalysisPositionUpdate);
+        window.visualViewport?.addEventListener('scroll', this.scheduleAnalysisPositionUpdate);
+        window.visualViewport?.addEventListener('resize', this.scheduleAnalysisPositionUpdate);
         document.addEventListener('keydown', this.onKeyDown, true);
+    }
+
+    private scheduleAnalysisPositionUpdate = () => {
+        if (this.analysisPositionAnimationFrame !== null) return;
+        this.analysisPositionAnimationFrame = requestAnimationFrame(() => {
+            this.analysisPositionAnimationFrame = null;
+            this.updateAnalysisPositions();
+        });
+    };
+
+    private updateAnalysisPositions() {
+        const viewportLeft = window.visualViewport?.offsetLeft ?? 0;
+        const viewportRight = viewportLeft + (window.visualViewport?.width ?? document.documentElement.clientWidth);
+        for (const element of this.elementMapping.values()) {
+            if (element instanceof SyntaxNodeEl) {
+                element.updateAnalysisPosition(viewportLeft, viewportRight);
+            }
+        }
     }
 
     private createSelectionActions(): HTMLDivElement {
@@ -603,7 +651,7 @@ export class SyntaxEditor {
 
     private setTreePreview(preview: TreePreviewData) {
         this.treePreview = preview;
-        this.elementMapping = this.rootEl.build(preview.tree.getJSON());
+        this.rebuildTreeElements(preview.tree.getJSON());
         this.rootEl.classList.add('tree-preview');
 
         if (this.resizeDrag) {
@@ -926,6 +974,7 @@ export class SyntaxEditor {
             type: element.type,
             field: null
         };
+        this.scheduleAnalysisPositionUpdate();
         this.autocomplete.connect(
             this.state.editing.elements,
             (input) => this.focusNextEditingInput(input)
