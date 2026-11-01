@@ -26,7 +26,7 @@ const EDITOR_GUIDE_STEPS: readonly EditorGuideStep[] = [
         description: 'Haz clic y arrastra desde la primera hasta la última palabra que quieras incluir en un sintagma u oración. Al soltar se creará una caja.'
     },
     {
-        heading: 'Escribe el análsis de una caja',
+        heading: 'Escribe el análisis de una caja',
         description: 'Haz doble clic en una caja para editar su análisis. Podrás modificar su categoría y función y añadir comentarios.'
     },
     {

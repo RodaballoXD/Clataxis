@@ -214,8 +214,8 @@ export class SyntaxTree {
 
 
     setNodeAnalysis(id: number, analysis: AnalysisData) {
-        const node = this.getNode(id) as SyntaxNode;
-        if ((node as any).type === 'word') throw new Error('Cannot setNodeAnalysis of WordNode');
+        const node = this.getNode(id) as SyntaxNode | WordNode;
+        if (node.type === 'word') throw new Error('Cannot setNodeAnalysis of WordNode');
         node.category = newAnalysisPart(node.category, analysis.category);
         node.function = newAnalysisPart(node.function, analysis.function);
         node.comment = newAnalysisPart(node.comment, analysis.comment) ?? undefined;

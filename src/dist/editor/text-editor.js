@@ -104,7 +104,7 @@ function loadMonaco() {
         return Promise.resolve(window.monaco);
     if (monacoPromise)
         return monacoPromise;
-    monacoPromise = new Promise((resolve, reject) => {
+    const loadPromise = new Promise((resolve, reject) => {
         const amdRequire = window.require;
         if (!amdRequire) {
             reject(new Error('Monaco loader is unavailable'));
@@ -120,7 +120,12 @@ function loadMonaco() {
             resolve(window.monaco);
         }, reject);
     });
-    return monacoPromise;
+    monacoPromise = loadPromise;
+    void loadPromise.catch(() => {
+        if (monacoPromise === loadPromise)
+            monacoPromise = null;
+    });
+    return loadPromise;
 }
 function configureMonaco(monaco) {
     if (monacoConfigured)

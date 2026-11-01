@@ -11,7 +11,6 @@ import { clearEditorJSONFromURL, getEditorJSONFromURL, setEditorJSONInURL } from
 const EDITOR_HELP_DISMISSED_STORAGE_KEY = 'clataxis:editor-help-dismissed';
 
 export class App {
-    private activeScreen: Screen = 'sentence';
     private activeEditor: SyntaxEditor | null = null;
     private activeTextEditor: TextSyntaxEditor | null = null;
     private appEl: HTMLDivElement;
@@ -24,7 +23,11 @@ export class App {
 
     constructor(appEl: HTMLDivElement) {
         this.appEl = appEl;
-        this.editorHelpDismissed = window.localStorage.getItem(EDITOR_HELP_DISMISSED_STORAGE_KEY) === 'true';
+        try {
+            this.editorHelpDismissed = window.localStorage.getItem(EDITOR_HELP_DISMISSED_STORAGE_KEY) === 'true';
+        } catch (error) {
+            console.warn('Could not read editor-help preference from localStorage.', error);
+        }
         this.editorHelpState = { isOpen: !this.editorHelpDismissed, step: 0 };
         window.addEventListener('popstate', this.onBrowserNavigation);
         document.addEventListener('keydown', this.onKeyDown, true);
@@ -38,7 +41,6 @@ export class App {
     }
 
     private setScreen(screen: Screen, json?: ReducedJSON, urlMode: URLMode = 'none') {
-        this.activeScreen = screen;
         this.destroyActiveEditors();
         this.undoStack = [];
         this.redoStack = [];
@@ -155,7 +157,11 @@ export class App {
     private onEditorHelpDismissed = () => {
         if (this.editorHelpDismissed) return;
 
-        window.localStorage.setItem(EDITOR_HELP_DISMISSED_STORAGE_KEY, 'true');
+        try {
+            window.localStorage.setItem(EDITOR_HELP_DISMISSED_STORAGE_KEY, 'true');
+        } catch (error) {
+            console.warn('Could not save editor-help preference to localStorage.', error);
+        }
         this.editorHelpDismissed = true;
     };
 
