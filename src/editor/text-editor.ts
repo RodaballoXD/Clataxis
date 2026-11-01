@@ -13,6 +13,7 @@ export class TextSyntaxEditor {
     private editor: MonacoStandaloneEditor | null = null;
     private changeSubscription: { dispose(): void } | null = null;
     private isDestroyed = false;
+    private isSettingAnalysis = false;
     private onValidChange: (json: ReducedJSON) => void;
     private controls: EditorInterfaceEls;
 
@@ -43,6 +44,21 @@ export class TextSyntaxEditor {
         this.editor?.dispose();
         this.controls.compactButtonEl.removeEventListener('click', this.compact);
         this.controls.indentButtonEl.removeEventListener('click', this.indent);
+    }
+
+    setAnalysis(json: ReducedJSON) {
+        this.initialText = reducedJSONToSyntaxRepr(json, 4).repr;
+        if (!this.editor) return;
+
+        this.isSettingAnalysis = true;
+        try {
+            this.editor.setValue(this.initialText);
+        } finally {
+            this.isSettingAnalysis = false;
+        }
+        this.controls.notificationEl.textContent = '';
+        this.controls.compactButtonEl.disabled = false;
+        this.controls.indentButtonEl.disabled = false;
     }
 
     private async initialize() {
@@ -85,6 +101,8 @@ export class TextSyntaxEditor {
     }
 
     private onInput = () => {
+        if (this.isSettingAnalysis) return;
+
         const draft = this.editor?.getValue();
         if (draft === undefined) return;
 

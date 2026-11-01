@@ -9,7 +9,10 @@ export class TextSyntaxEditor {
         this.editor = null;
         this.changeSubscription = null;
         this.isDestroyed = false;
+        this.isSettingAnalysis = false;
         this.onInput = () => {
+            if (this.isSettingAnalysis)
+                return;
             const draft = this.editor?.getValue();
             if (draft === undefined)
                 return;
@@ -46,6 +49,21 @@ export class TextSyntaxEditor {
         this.editor?.dispose();
         this.controls.compactButtonEl.removeEventListener('click', this.compact);
         this.controls.indentButtonEl.removeEventListener('click', this.indent);
+    }
+    setAnalysis(json) {
+        this.initialText = reducedJSONToSyntaxRepr(json, 4).repr;
+        if (!this.editor)
+            return;
+        this.isSettingAnalysis = true;
+        try {
+            this.editor.setValue(this.initialText);
+        }
+        finally {
+            this.isSettingAnalysis = false;
+        }
+        this.controls.notificationEl.textContent = '';
+        this.controls.compactButtonEl.disabled = false;
+        this.controls.indentButtonEl.disabled = false;
     }
     async initialize() {
         try {

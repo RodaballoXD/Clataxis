@@ -11,6 +11,7 @@ export class App {
         this.activeEditor = null;
         this.activeTextEditor = null;
         this.currentEditorJSON = null;
+        this.treeEditorViewState = null;
         this.editorMode = 'tree';
         this.editorHelpState = { isOpen: true, step: 0 };
         this.editorHelpDismissed = false;
@@ -43,7 +44,8 @@ export class App {
             this.redoStack.push(cloneReducedJSON(this.currentEditorJSON));
             this.currentEditorJSON = previous;
             setEditorJSONInURL(previous);
-            this.mountEditorMode(this.editorMode);
+            this.setActiveAnalysis(previous);
+            this.updateHistoryButtons();
         };
         this.redo = () => {
             const next = this.redoStack.pop();
@@ -52,7 +54,8 @@ export class App {
             this.undoStack.push(cloneReducedJSON(this.currentEditorJSON));
             this.currentEditorJSON = next;
             setEditorJSONInURL(next);
-            this.mountEditorMode(this.editorMode);
+            this.setActiveAnalysis(next);
+            this.updateHistoryButtons();
         };
         this.onKeyDown = (event) => {
             if (!(event.ctrlKey || event.metaKey))
@@ -103,6 +106,7 @@ export class App {
         this.destroyActiveEditors();
         this.undoStack = [];
         this.redoStack = [];
+        this.treeEditorViewState = null;
         this.appEl.replaceChildren();
         if (screen === 'sentence') {
             this.currentEditorJSON = null;
@@ -139,13 +143,15 @@ export class App {
         const json = this.currentEditorJSON;
         if (!json)
             return;
-        const zoomLevel = this.activeEditor?.zoomLevel ?? 1;
+        const viewState = this.activeEditor?.getViewState() ?? this.treeEditorViewState ?? undefined;
+        if (this.activeEditor)
+            this.treeEditorViewState = viewState ?? null;
         this.destroyActiveEditors();
         this.editorMode = mode;
         this.appEl.replaceChildren();
-        this.mountEditorScreen(json, 'none', mode, zoomLevel);
+        this.mountEditorScreen(json, 'none', mode, viewState);
     }
-    mountEditorScreen(json, urlMode, mode, zoomLevel = 1) {
+    mountEditorScreen(json, urlMode, mode, viewState) {
         const onReturnToSentenceScreen = () => {
             this.setScreen('sentence', undefined, 'push');
         };
@@ -159,7 +165,7 @@ export class App {
         }
         if (mode === 'tree') {
             const onChange = (nextJSON) => this.recordAnalysisChange(nextJSON);
-            const editor = new SyntaxEditor(json, onChange, editorContainerEls, zoomLevel, this.editorHelpState, this.onEditorHelpDismissed);
+            const editor = new SyntaxEditor(json, onChange, editorContainerEls, viewState, this.editorHelpState, this.onEditorHelpDismissed);
             this.activeEditor = editor;
             editor.mount(editorContainerEls.rootContainerEl);
             return;
@@ -190,6 +196,17 @@ export class App {
         this.currentEditorJSON = cloneReducedJSON(nextJSON);
         setEditorJSONInURL(this.currentEditorJSON);
         this.updateHistoryButtons();
+    }
+    setActiveAnalysis(json) {
+        if (this.editorMode === 'tree') {
+            if (!this.activeEditor)
+                throw new Error('Cannot update analysis without an active tree editor');
+            this.activeEditor.setAnalysis(json);
+            return;
+        }
+        if (!this.activeTextEditor)
+            throw new Error('Cannot update analysis without an active text editor');
+        this.activeTextEditor.setAnalysis(json);
     }
     updateHistoryButtons(undoButtonEl, redoButtonEl) {
         undoButtonEl ?? (undoButtonEl = this.appEl.querySelector('.editor-history-controls button:first-child') ?? undefined);

@@ -8,6 +8,18 @@ import { createEditorHelp, type EditorHelpState, type EditorHelpView } from "./e
 
 const ZOOM_STEPS = [0.25, 0.3, 0.4, 0.5, 0.6, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4];
 
+export interface SyntaxEditorViewState {
+    zoomLevel: number;
+    scrollLeft: number;
+    scrollTop: number;
+}
+
+const DEFAULT_VIEW_STATE: SyntaxEditorViewState = {
+    zoomLevel: 1,
+    scrollLeft: 0,
+    scrollTop: 0
+};
+
 export class SyntaxEditor {
     readonly supportsHistory: boolean = true;
     tree: SyntaxTree;
@@ -17,6 +29,7 @@ export class SyntaxEditor {
     private onChange: (json: ReducedJSON) => void;
     private controls: EditorInterfaceEls;
     private editorHelp: EditorHelpView | null;
+    private viewState: SyntaxEditorViewState;
     private zoom: number = 1;
     private notificationTimeout: number | null = null;
     private analysisPositionAnimationFrame: number | null = null;
@@ -50,13 +63,14 @@ export class SyntaxEditor {
         json: ReducedJSON,
         onChange: (json: ReducedJSON) => void = () => {},
         controls: EditorInterfaceEls,
-        initialZoom = 1,
+        initialViewState: SyntaxEditorViewState = DEFAULT_VIEW_STATE,
         initialHelpState: EditorHelpState | null = { isOpen: true, step: 0 },
         onHelpDismissed: () => void = () => {}
     ) {
         this.tree = new SyntaxTree(json);
         this.rootEl = document.createElement('root-node') as RootNodeEl;
-        this.zoom = initialZoom;
+        this.viewState = { ...initialViewState };
+        this.zoom = initialViewState.zoomLevel;
         this.appEl = document.getElementById('app') as HTMLDivElement;
         this.selectionActionsEl = this.createSelectionActions();
         this.onChange = onChange;
@@ -71,17 +85,58 @@ export class SyntaxEditor {
         container.appendChild(this.rootEl);
         this.rootEl.style.zoom = String(this.zoom);
         this.renderTree();
+        this.setViewState(this.viewState);
         this.installListeners();
         this.installControlListeners();
         if (this.editorHelp?.getState().isOpen) this.editorHelp.focus();
     }
 
-    get zoomLevel(): number {
-        return this.zoom;
+    getViewState(): SyntaxEditorViewState {
+        return {
+            zoomLevel: this.zoom,
+            scrollLeft: this.appEl.scrollLeft,
+            scrollTop: this.appEl.scrollTop
+        };
+    }
+
+    setViewState(viewState: SyntaxEditorViewState) {
+        this.viewState = { ...viewState };
+        this.zoom = viewState.zoomLevel;
+        this.rootEl.style.zoom = String(this.zoom);
+        this.appEl.scrollLeft = viewState.scrollLeft;
+        this.appEl.scrollTop = viewState.scrollTop;
+        this.updateAnalysisPositions();
     }
 
     getEditorHelpState(): EditorHelpState | null {
         return this.editorHelp?.getState() ?? null;
+    }
+
+    setAnalysis(json: ReducedJSON) {
+        const pointerId = this.state.pointer.pointerId;
+        if (pointerId !== null && this.appEl.hasPointerCapture(pointerId)) {
+            this.appEl.releasePointerCapture(pointerId);
+        }
+        if (this.resizeDrag && this.appEl.hasPointerCapture(this.resizeDrag.pointerId)) {
+            this.appEl.releasePointerCapture(this.resizeDrag.pointerId);
+        }
+        this.resizeDrag?.handleEl.classList.remove('dragging');
+        this.resizeDrag = null;
+        this.appEl.classList.remove('resize-dragging');
+        this.clearPointerState();
+        this.clearDragHighlight();
+        this.stopAutoScroll();
+        this.clearTreePreview(false);
+        this.autocomplete.connect(null);
+        this.state.selectedNodeId = null;
+        this.state.editing = {
+            isEditing: false,
+            type: null,
+            field: null,
+            elements: null
+        };
+        this.tree = new SyntaxTree(json);
+        this.renderTree();
     }
 
     destroy() {
@@ -434,7 +489,7 @@ export class SyntaxEditor {
         }
         if (!this.state.pointer.isDragging) return;
 
-        const MIN_PIXELS_MOVED = 20;
+        const MIN_PIXELS_MOVED = 20 * this.zoom;
         
         const currentPos = this.getMousePosition(event);
         this.lastPointerX = event.clientX;

@@ -4,8 +4,13 @@ import { FieldAutocomplete } from "./autocomplete.js";
 import { createIcon } from "../shared/icons.js";
 import { createEditorHelp } from "./editor-help.js";
 const ZOOM_STEPS = [0.25, 0.3, 0.4, 0.5, 0.6, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4];
+const DEFAULT_VIEW_STATE = {
+    zoomLevel: 1,
+    scrollLeft: 0,
+    scrollTop: 0
+};
 export class SyntaxEditor {
-    constructor(json, onChange = () => { }, controls, initialZoom = 1, initialHelpState = { isOpen: true, step: 0 }, onHelpDismissed = () => { }) {
+    constructor(json, onChange = () => { }, controls, initialViewState = DEFAULT_VIEW_STATE, initialHelpState = { isOpen: true, step: 0 }, onHelpDismissed = () => { }) {
         this.supportsHistory = true;
         this.zoom = 1;
         this.notificationTimeout = null;
@@ -186,7 +191,7 @@ export class SyntaxEditor {
             }
             if (!this.state.pointer.isDragging)
                 return;
-            const MIN_PIXELS_MOVED = 20;
+            const MIN_PIXELS_MOVED = 20 * this.zoom;
             const currentPos = this.getMousePosition(event);
             this.lastPointerX = event.clientX;
             this.lastPointerY = event.clientY;
@@ -238,7 +243,8 @@ export class SyntaxEditor {
         };
         this.tree = new SyntaxTree(json);
         this.rootEl = document.createElement('root-node');
-        this.zoom = initialZoom;
+        this.viewState = { ...initialViewState };
+        this.zoom = initialViewState.zoomLevel;
         this.appEl = document.getElementById('app');
         this.selectionActionsEl = this.createSelectionActions();
         this.onChange = onChange;
@@ -252,16 +258,55 @@ export class SyntaxEditor {
         container.appendChild(this.rootEl);
         this.rootEl.style.zoom = String(this.zoom);
         this.renderTree();
+        this.setViewState(this.viewState);
         this.installListeners();
         this.installControlListeners();
         if (this.editorHelp?.getState().isOpen)
             this.editorHelp.focus();
     }
-    get zoomLevel() {
-        return this.zoom;
+    getViewState() {
+        return {
+            zoomLevel: this.zoom,
+            scrollLeft: this.appEl.scrollLeft,
+            scrollTop: this.appEl.scrollTop
+        };
+    }
+    setViewState(viewState) {
+        this.viewState = { ...viewState };
+        this.zoom = viewState.zoomLevel;
+        this.rootEl.style.zoom = String(this.zoom);
+        this.appEl.scrollLeft = viewState.scrollLeft;
+        this.appEl.scrollTop = viewState.scrollTop;
+        this.updateAnalysisPositions();
     }
     getEditorHelpState() {
         return this.editorHelp?.getState() ?? null;
+    }
+    setAnalysis(json) {
+        const pointerId = this.state.pointer.pointerId;
+        if (pointerId !== null && this.appEl.hasPointerCapture(pointerId)) {
+            this.appEl.releasePointerCapture(pointerId);
+        }
+        if (this.resizeDrag && this.appEl.hasPointerCapture(this.resizeDrag.pointerId)) {
+            this.appEl.releasePointerCapture(this.resizeDrag.pointerId);
+        }
+        this.resizeDrag?.handleEl.classList.remove('dragging');
+        this.resizeDrag = null;
+        this.appEl.classList.remove('resize-dragging');
+        this.clearPointerState();
+        this.clearDragHighlight();
+        this.stopAutoScroll();
+        this.clearTreePreview(false);
+        this.autocomplete.connect(null);
+        this.state.selectedNodeId = null;
+        this.state.editing = {
+            isEditing: false,
+            type: null,
+            field: null,
+            elements: null
+        };
+        this.tree = new SyntaxTree(json);
+        this.renderTree();
     }
     destroy() {
         this.editorHelp?.destroy();

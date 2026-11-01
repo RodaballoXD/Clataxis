@@ -219,13 +219,13 @@ syntax-node:hover:not(.selected):not(:has(.children syntax-node:hover, .children
 }
 
 .analysis {
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.75rem;
     padding: 0 1rem;
     display: flex;
     justify-content: center;
     font-weight: 670;
     font-size: 1.6rem;
-    min-height: 2.4rem;
+    height: 2.4rem;
     overflow: hidden;
 }
 
