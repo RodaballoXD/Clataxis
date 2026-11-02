@@ -65,7 +65,8 @@ export class SyntaxEditor {
         controls: EditorInterfaceEls,
         initialViewState: SyntaxEditorViewState = DEFAULT_VIEW_STATE,
         initialHelpState: EditorHelpState | null = { isOpen: true, step: 0 },
-        onHelpDismissed: () => void = () => {}
+        onHelpDismissed: () => void = () => {},
+        showInitialHelpHint = false
     ) {
         this.tree = new SyntaxTree(json);
         this.rootEl = document.createElement('root-node') as RootNodeEl;
@@ -75,7 +76,9 @@ export class SyntaxEditor {
         this.selectionActionsEl = this.createSelectionActions();
         this.onChange = onChange;
         this.controls = controls;
-        this.editorHelp = initialHelpState === null ? null : createEditorHelp(initialHelpState, onHelpDismissed);
+        this.editorHelp = initialHelpState === null
+            ? null
+            : createEditorHelp(initialHelpState, onHelpDismissed, showInitialHelpHint);
     }
 
     mount(container: HTMLElement) {

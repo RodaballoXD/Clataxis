@@ -10,7 +10,7 @@ const DEFAULT_VIEW_STATE = {
     scrollTop: 0
 };
 export class SyntaxEditor {
-    constructor(json, onChange = () => { }, controls, initialViewState = DEFAULT_VIEW_STATE, initialHelpState = { isOpen: true, step: 0 }, onHelpDismissed = () => { }) {
+    constructor(json, onChange = () => { }, controls, initialViewState = DEFAULT_VIEW_STATE, initialHelpState = { isOpen: true, step: 0 }, onHelpDismissed = () => { }, showInitialHelpHint = false) {
         this.supportsHistory = true;
         this.zoom = 1;
         this.notificationTimeout = null;
@@ -257,7 +257,9 @@ export class SyntaxEditor {
         this.selectionActionsEl = this.createSelectionActions();
         this.onChange = onChange;
         this.controls = controls;
-        this.editorHelp = initialHelpState === null ? null : createEditorHelp(initialHelpState, onHelpDismissed);
+        this.editorHelp = initialHelpState === null
+            ? null
+            : createEditorHelp(initialHelpState, onHelpDismissed, showInitialHelpHint);
     }
     mount(container) {
         if (this.editorHelp) {

@@ -19,6 +19,7 @@ export class App {
     private editorMode: EditorMode = 'tree';
     private editorHelpState: EditorHelpState = { isOpen: true, step: 0 };
     private editorHelpDismissed = false;
+    private editorHelpInitialHintPending = false;
     private undoStack: ReducedJSON[] = [];
     private redoStack: ReducedJSON[] = [];
 
@@ -35,6 +36,10 @@ export class App {
 
         const editorJSON = getEditorJSONFromURL();
         if (editorJSON) {
+            if (!this.editorHelpDismissed) {
+                this.editorHelpState = { isOpen: false, step: 0 };
+                this.editorHelpInitialHintPending = true;
+            }
             this.setScreen('editor', editorJSON, 'none');
         } else {
             this.setScreen('sentence', undefined, 'none');
@@ -76,6 +81,8 @@ export class App {
         const onComenzar = (sentence: string) => {
             const json = sentenceToReducedJSON(sentence);
             if (!json) return;
+            this.editorHelpState = { ...this.editorHelpState, isOpen: !this.editorHelpDismissed };
+            this.editorHelpInitialHintPending = !this.editorHelpDismissed;
             this.setScreen('editor', json, 'push');
         };
         const enterSentenceEl = createEnterSentenceEl(onComenzar);
@@ -132,8 +139,10 @@ export class App {
                 editorContainerEls,
                 viewState,
                 this.editorHelpState,
-                this.onEditorHelpDismissed
+                this.onEditorHelpDismissed,
+                this.editorHelpInitialHintPending
             );
+            this.editorHelpInitialHintPending = false;
             this.activeEditor = editor;
             editor.mount(editorContainerEls.rootContainerEl);
             return;

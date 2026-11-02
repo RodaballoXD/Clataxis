@@ -1,5 +1,7 @@
 import { createButton } from "../shared/button.js";
 const REOPEN_HINT_DURATION_MS = 4000;
+const INITIAL_HINT_DELAY_MS = 2000;
+const INITIAL_HINT_DURATION_MS = 5000;
 const EDITOR_GUIDE_STEPS = [
     {
         heading: 'Crea una caja',
@@ -30,7 +32,7 @@ const EDITOR_GUIDE_STEPS = [
         description: 'Ctrl + Z para deshacer, Ctrl + Y para rehacer, Entrar para terminar una edición... Coloca el cursor sobre cualquier botón para ver su atajo de teclado.'
     }
 ];
-export function createEditorHelp(initialState, onClose) {
+export function createEditorHelp(initialState, onClose, showInitialHint = false) {
     const containerEl = document.createElement('div');
     containerEl.className = 'editor-help';
     const panelEl = document.createElement('section');
@@ -69,13 +71,14 @@ export function createEditorHelp(initialState, onClose) {
     });
     const reopenHintEl = document.createElement('p');
     reopenHintEl.className = 'editor-help-reopen-hint';
-    reopenHintEl.textContent = 'Puedes volver a abrir esta guía aquí.';
+    reopenHintEl.textContent = 'Puedes consultar aquí la guía del editor.';
     reopenHintEl.setAttribute('role', 'status');
     panelEl.append(closeButtonEl, progressEl, headingEl, descriptionEl, previousButtonEl, nextButtonEl);
     containerEl.append(panelEl, helpButtonEl, reopenHintEl);
     let currentStep = 0;
     let isOpen = initialState.isOpen;
     let reopenHintTimeout = null;
+    let initialHintTimeout = null;
     function showStep(stepIndex) {
         const nextStep = Math.max(0, Math.min(stepIndex, EDITOR_GUIDE_STEPS.length - 1));
         if (nextStep === currentStep)
@@ -123,14 +126,18 @@ export function createEditorHelp(initialState, onClose) {
             showReopenHint();
         }
     }
-    function showReopenHint() {
+    function showReopenHint(duration = REOPEN_HINT_DURATION_MS) {
         if (reopenHintTimeout !== null) {
             window.clearTimeout(reopenHintTimeout);
         }
         reopenHintEl.hidden = false;
-        reopenHintTimeout = window.setTimeout(hideReopenHint, REOPEN_HINT_DURATION_MS);
+        reopenHintTimeout = window.setTimeout(hideReopenHint, duration);
     }
     function hideReopenHint() {
+        if (initialHintTimeout !== null) {
+            window.clearTimeout(initialHintTimeout);
+            initialHintTimeout = null;
+        }
         if (reopenHintTimeout !== null) {
             window.clearTimeout(reopenHintTimeout);
             reopenHintTimeout = null;
@@ -143,16 +150,19 @@ export function createEditorHelp(initialState, onClose) {
     helpButtonEl.hidden = isOpen;
     helpButtonEl.setAttribute('aria-expanded', String(isOpen));
     reopenHintEl.hidden = true;
+    if (showInitialHint && !isOpen) {
+        initialHintTimeout = window.setTimeout(() => {
+            initialHintTimeout = null;
+            showReopenHint(INITIAL_HINT_DURATION_MS);
+        }, INITIAL_HINT_DELAY_MS);
+    }
     return {
         element: containerEl,
         focus: () => closeButtonEl.focus(),
         handleKeyDown,
         getState: () => ({ isOpen, step: currentStep }),
         destroy: () => {
-            if (reopenHintTimeout !== null) {
-                window.clearTimeout(reopenHintTimeout);
-                reopenHintTimeout = null;
-            }
+            hideReopenHint();
             containerEl.remove();
         }
     };

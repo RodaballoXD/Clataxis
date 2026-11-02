@@ -1,6 +1,8 @@
 import { createButton } from "../shared/button.js";
 
 const REOPEN_HINT_DURATION_MS = 4000;
+const INITIAL_HINT_DELAY_MS = 2000;
+const INITIAL_HINT_DURATION_MS = 5000;
 
 export interface EditorHelpState {
     isOpen: boolean;
@@ -51,7 +53,11 @@ const EDITOR_GUIDE_STEPS: readonly EditorGuideStep[] = [
     }
 ];
 
-export function createEditorHelp(initialState: EditorHelpState, onClose: () => void): EditorHelpView {
+export function createEditorHelp(
+    initialState: EditorHelpState,
+    onClose: () => void,
+    showInitialHint = false
+): EditorHelpView {
     const containerEl = document.createElement('div');
     containerEl.className = 'editor-help';
 
@@ -99,7 +105,7 @@ export function createEditorHelp(initialState: EditorHelpState, onClose: () => v
 
     const reopenHintEl = document.createElement('p');
     reopenHintEl.className = 'editor-help-reopen-hint';
-    reopenHintEl.textContent = 'Puedes volver a abrir esta guía aquí.';
+    reopenHintEl.textContent = 'Puedes consultar aquí la guía del editor.';
     reopenHintEl.setAttribute('role', 'status');
 
     panelEl.append(
@@ -115,6 +121,7 @@ export function createEditorHelp(initialState: EditorHelpState, onClose: () => v
     let currentStep = 0;
     let isOpen = initialState.isOpen;
     let reopenHintTimeout: number | null = null;
+    let initialHintTimeout: number | null = null;
 
     function showStep(stepIndex: number) {
         const nextStep = Math.max(0, Math.min(stepIndex, EDITOR_GUIDE_STEPS.length - 1));
@@ -166,15 +173,19 @@ export function createEditorHelp(initialState: EditorHelpState, onClose: () => v
         }
     }
 
-    function showReopenHint() {
+    function showReopenHint(duration = REOPEN_HINT_DURATION_MS) {
         if (reopenHintTimeout !== null) {
             window.clearTimeout(reopenHintTimeout);
         }
         reopenHintEl.hidden = false;
-        reopenHintTimeout = window.setTimeout(hideReopenHint, REOPEN_HINT_DURATION_MS);
+        reopenHintTimeout = window.setTimeout(hideReopenHint, duration);
     }
 
     function hideReopenHint() {
+        if (initialHintTimeout !== null) {
+            window.clearTimeout(initialHintTimeout);
+            initialHintTimeout = null;
+        }
         if (reopenHintTimeout !== null) {
             window.clearTimeout(reopenHintTimeout);
             reopenHintTimeout = null;
@@ -188,6 +199,12 @@ export function createEditorHelp(initialState: EditorHelpState, onClose: () => v
     helpButtonEl.hidden = isOpen;
     helpButtonEl.setAttribute('aria-expanded', String(isOpen));
     reopenHintEl.hidden = true;
+    if (showInitialHint && !isOpen) {
+        initialHintTimeout = window.setTimeout(() => {
+            initialHintTimeout = null;
+            showReopenHint(INITIAL_HINT_DURATION_MS);
+        }, INITIAL_HINT_DELAY_MS);
+    }
 
     return {
         element: containerEl,
@@ -195,10 +212,7 @@ export function createEditorHelp(initialState: EditorHelpState, onClose: () => v
         handleKeyDown,
         getState: () => ({ isOpen, step: currentStep }),
         destroy: () => {
-            if (reopenHintTimeout !== null) {
-                window.clearTimeout(reopenHintTimeout);
-                reopenHintTimeout = null;
-            }
+            hideReopenHint();
             containerEl.remove();
         }
     };
