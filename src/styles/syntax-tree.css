@@ -161,7 +161,7 @@ syntax-node:hover:not(.selected):not(:has(.children syntax-node:hover, .children
     left: 50%;
     bottom: -0.5rem;
     z-index: 2;
-    transform: translateX(-50%);
+    transform: translateX(calc(-50% + var(--analysis-horizontal-offset, 0px)));
     gap: 2rem;
     pointer-events: auto;
 }

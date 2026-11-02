@@ -428,16 +428,20 @@ export class SyntaxEditor {
         this.zoom = Math.round(nextZoom * 100) / 100;
         const scrollbarProgress = this.getScrollbarProgress();
         this.rootEl.style.zoom = String(this.zoom);
-        this.appEl.scrollLeft = scrollbarProgress * (this.appEl.scrollWidth - this.appEl.clientWidth);
+        this.appEl.scrollLeft = scrollbarProgress.x * (this.appEl.scrollWidth - this.appEl.clientWidth);
+        this.appEl.scrollTop = scrollbarProgress.y * (this.appEl.scrollHeight - this.appEl.clientHeight);
         this.updateAnalysisPositions();
         this.showNotification(`Zoom ${this.zoom.toFixed(2).replace(/\.0$/, '')}x`);
     }
     getScrollbarProgress() {
         const scrollLeft = this.appEl.scrollLeft;
         const scrollWidth = this.appEl.scrollWidth - this.appEl.clientWidth;
-        if (scrollWidth <= 0)
-            return 0.5;
-        return scrollLeft / scrollWidth;
+        const scrollTop = this.appEl.scrollTop;
+        const scrollHeight = this.appEl.scrollHeight - this.appEl.clientHeight;
+        return {
+            x: (scrollWidth > 0) ? scrollLeft / scrollWidth : 0.5,
+            y: (scrollHeight > 0) ? scrollTop / scrollHeight : 0
+        };
     }
     installListeners() {
         this.appEl.addEventListener('pointerdown', this.onPointerDown);
@@ -789,11 +793,13 @@ export class SyntaxEditor {
         const id = this.state.selectedNodeId;
         if (id === null) {
             this.selectionActionsEl.remove();
+            this.updateAnalysisPositions();
             return;
         }
         const selectedNode = this.tree.getNode(id);
         if (selectedNode.type === 'word') {
             this.selectionActionsEl.remove();
+            this.updateAnalysisPositions();
             return;
         }
         const selectedElement = this.elementMapping.get(id);
@@ -804,9 +810,11 @@ export class SyntaxEditor {
         swapParentButtonEl.hidden = !this.canSwapNodeWithParent(id);
         if (this.state.editing.isEditing || this.hideSelectionActionsForNode(id)) {
             this.selectionActionsEl.remove();
+            this.updateAnalysisPositions();
             return;
         }
         selectedElement.appendChild(this.selectionActionsEl);
+        this.updateAnalysisPositions();
     }
     showNotification(message, duration = 1800) {
         this.controls.notificationEl.textContent = message;

@@ -125,15 +125,22 @@ export class SyntaxNodeEl extends BoxNodeEl {
     updateAnalysisPosition(viewportLeft, viewportRight) {
         const analysisRect = this.analysisEl.getBoundingClientRect();
         const textRect = this.analysisTextEl.getBoundingClientRect();
-        if (textRect.width === 0)
-            return;
+        const actionsEl = this.querySelector(':scope > .node-action-buttons');
+        const actionsWidth = actionsEl?.getBoundingClientRect().width ?? 0;
         const analysisStyle = getComputedStyle(this.analysisEl);
         const scale = this.analysisEl.offsetWidth > 0 ? analysisRect.width / this.analysisEl.offsetWidth : 1;
         const containerLeft = analysisRect.left + (Number.parseFloat(analysisStyle.paddingLeft) || 0) * scale;
         const containerRight = analysisRect.right - (Number.parseFloat(analysisStyle.paddingRight) || 0) * scale;
+        const containerWidth = containerRight - containerLeft;
+        const contentWidth = actionsWidth <= containerWidth
+            ? Math.max(textRect.width, actionsWidth)
+            : textRect.width;
+        if (contentWidth === 0)
+            return;
         const currentOffset = this.analysisOffsetPercent * textRect.width / 100;
-        const baseLeft = textRect.left - currentOffset;
-        const baseRight = textRect.right - currentOffset;
+        const contentCenter = (textRect.left + textRect.right) / 2 - currentOffset;
+        const baseLeft = contentCenter - contentWidth / 2;
+        const baseRight = contentCenter + contentWidth / 2;
         const viewportInset = Math.min(12, (viewportRight - viewportLeft) / 2);
         const visibleLeft = viewportLeft + viewportInset;
         const visibleRight = viewportRight - viewportInset;
@@ -142,12 +149,14 @@ export class SyntaxNodeEl extends BoxNodeEl {
             nextOffset = visibleLeft - baseLeft;
         if (baseRight + nextOffset > visibleRight)
             nextOffset = visibleRight - baseRight;
+        const shouldShift = nextOffset !== 0;
         const minOffset = containerLeft - baseLeft;
         const maxOffset = containerRight - baseRight;
         nextOffset = Math.min(Math.max(nextOffset, minOffset), maxOffset);
-        this.analysisOffsetPercent = nextOffset / textRect.width * 100;
+        this.analysisOffsetPercent = textRect.width > 0 ? nextOffset / textRect.width * 100 : 0;
         this.analysisTextEl.style.transform = `translateX(${this.analysisOffsetPercent}%)`;
-        this.analysisTextEl.classList.toggle('is-shifted', Math.abs(nextOffset) > 0.5);
+        this.style.setProperty('--analysis-horizontal-offset', `${nextOffset / scale}px`);
+        this.analysisTextEl.classList.toggle('is-shifted', shouldShift);
     }
     startEdit() {
         this.analysisEl.classList.add('editing');
