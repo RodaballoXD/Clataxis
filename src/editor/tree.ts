@@ -211,6 +211,38 @@ export class SyntaxTree {
         return node;
     }
 
+    canSwapNodeWithParent(id: number): boolean {
+        const node = this.getNode(id);
+        if (node.type !== 'box') return false;
+
+        const parent = this.getParentNode(id);
+        return parent.id !== 'root'
+            && node.startToken === parent.startToken
+            && node.endToken === parent.endToken;
+    }
+
+    swapNodeWithParent(id: number): boolean {
+        if (!this.canSwapNodeWithParent(id)) return false;
+
+        const node = this.getNode(id) as SyntaxNode;
+        const parent = this.getParentNode(id) as SyntaxNode;
+        const grandparent = this.getParentNode(parent.id);
+        const parentIndex = grandparent.contents.indexOf(parent);
+        const nodeIndex = parent.contents.indexOf(node);
+        if (parentIndex < 0 || nodeIndex < 0) {
+            throw new Error(`Node ${id} is not in the expected parent hierarchy`);
+        }
+
+        const parentContents = parent.contents;
+        parent.contents = [...node.contents];
+        node.contents = [...parentContents];
+        node.contents[nodeIndex] = parent;
+        grandparent.contents[parentIndex] = node;
+
+        this.mapNodes();
+        return true;
+    }
+
 
 
     setNodeAnalysis(id: number, analysis: AnalysisData) {

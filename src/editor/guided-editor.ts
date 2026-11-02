@@ -81,6 +81,15 @@ export class GuidedSyntaxEditor extends SyntaxEditor {
             && super.canDeleteNode(nodeId);
     }
 
+    protected override canSwapNodeWithParent(nodeId: number): boolean {
+        const parentId = this.tree.getParentId(nodeId);
+        return this.guidedState.stage !== 'choose-target'
+            && !this.isTargetNode(nodeId)
+            && parentId !== 'root'
+            && !this.isTargetNode(parentId)
+            && super.canSwapNodeWithParent(nodeId);
+    }
+
     protected override canResizeNode(nodeId: number): boolean {
         return this.guidedState.stage !== 'choose-target'
             && !this.isTargetNode(nodeId)

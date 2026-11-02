@@ -3,7 +3,7 @@ import type { EditorInterfaceEls } from "./editor-screen.js";
 import type { AnalysisData, NodeId, ReducedJSON, RootNode, SyntaxNode, WordNode } from "./tree.js";
 import { SyntaxTree } from "./tree.js";
 import { FieldAutocomplete } from "./autocomplete.js";
-import { createIcon } from "../shared/icons.js";
+import { createButton } from "../shared/button.js";
 import { createEditorHelp, type EditorHelpState, type EditorHelpView } from "./editor-help.js";
 
 const ZOOM_STEPS = [0.25, 0.3, 0.4, 0.5, 0.6, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4];
@@ -246,6 +246,12 @@ export class SyntaxEditor {
         return this.canInteractWithNode(nodeId);
     }
 
+    protected canSwapNodeWithParent(nodeId: number): boolean {
+        if (!this.tree.canSwapNodeWithParent(nodeId)) return false;
+        const parentId = this.tree.getParentId(nodeId);
+        return this.canInteractWithNode(nodeId) && this.canInteractWithNode(parentId);
+    }
+
     protected canInsertBoxAtRange(startToken: number, endToken: number): boolean {
         const words = this.tree.getWordsFromTokenRange(startToken, endToken);
         return words.length > 0 && words.every((word) => this.canInteractWithNode(word.id));
@@ -311,30 +317,41 @@ export class SyntaxEditor {
         actionsEl.className = 'node-action-buttons';
         actionsEl.setAttribute('aria-label', 'Acciones del nodo seleccionado');
 
-        const deleteButtonEl = document.createElement('button');
-        deleteButtonEl.type = 'button';
-        deleteButtonEl.title = 'Eliminar caja y su contenido (Suprimir)';
-        deleteButtonEl.setAttribute('aria-label', 'Eliminar caja y su contenido (Suprimir)');
-        deleteButtonEl.appendChild(createIcon('M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13 M10 11v5 M14 11v5', 'node-action-icon'));
+        const deleteButtonEl = createButton(
+            'Eliminar caja y su contenido (Suprimir)',
+            'M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13 M10 11v5 M14 11v5',
+            'node-action-icon'
+        );
         deleteButtonEl.addEventListener('click', (event) => {
             event.stopPropagation();
             this.deleteNode();
         });
 
-        const promoteButtonEl = document.createElement('button');
-        promoteButtonEl.type = 'button';
-        promoteButtonEl.title = 'Quitar caja (Retroceso)';
-        promoteButtonEl.setAttribute('aria-label', 'Quitar caja (Retroceso)');
-        promoteButtonEl.appendChild(createIcon('M5 4h14v16H5z M9 12h6', 'node-action-icon'));
+        const promoteButtonEl = createButton(
+            'Quitar caja (Retroceso)',
+            'M5 4h14v16H5z M9 12h6',
+            'node-action-icon'
+        );
         promoteButtonEl.addEventListener('click', (event) => {
             event.stopPropagation();
             this.promoteChildren();
         });
 
+        const swapParentButtonEl = createButton(
+            'Intercambiar con la caja padre (Ctrl+↓)',
+            'M12 4v12m0 0 4-4m-4 4-4-4 M5 20h14',
+            'node-action-icon'
+        );
+        swapParentButtonEl.className = 'swap-parent-button';
+        swapParentButtonEl.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this.swapNodeWithParent();
+        });
+
         actionsEl.addEventListener('pointerdown', (event) => {
             event.stopPropagation();
         });
-        actionsEl.replaceChildren(deleteButtonEl, promoteButtonEl);
+        actionsEl.replaceChildren(deleteButtonEl, promoteButtonEl, swapParentButtonEl);
         return actionsEl;
     }
 
@@ -376,6 +393,15 @@ export class SyntaxEditor {
         }
 
         if (this.handleModeKeyDown(event)) return;
+
+        if (event.key === 'ArrowDown' && (event.ctrlKey || event.metaKey)) {
+            const selectedId = this.state.selectedNodeId;
+            if (selectedId !== null && this.canSwapNodeWithParent(selectedId)) {
+                event.preventDefault();
+                this.swapNodeWithParent();
+            }
+            return;
+        }
 
         if (event.key === '+') {
             event.preventDefault();
@@ -886,6 +912,9 @@ export class SyntaxEditor {
             'resize-disabled',
             this.state.editing.isEditing || !this.canResizeNode(id)
         );
+        const swapParentButtonEl = this.selectionActionsEl.querySelector<HTMLButtonElement>('.swap-parent-button');
+        if (!swapParentButtonEl) throw new Error('Swap-parent button is missing from selection actions');
+        swapParentButtonEl.hidden = !this.canSwapNodeWithParent(id);
         if (this.state.editing.isEditing || this.hideSelectionActionsForNode(id)) {
             this.selectionActionsEl.remove();
             return;
@@ -1134,6 +1163,18 @@ export class SyntaxEditor {
     private promoteChildren() {
         this.doDeleteAction(true);
         this.showNotification('Caja quitada');
+    }
+
+    private swapNodeWithParent() {
+        const id = this.state.selectedNodeId;
+        if (id === null || !this.canSwapNodeWithParent(id)) return;
+
+        const previousJSON = this.snapshot();
+        if (!this.tree.swapNodeWithParent(id)) return;
+
+        this.renderTree();
+        this.registerTreeChange(previousJSON);
+        this.showNotification('Caja intercambiada con su padre');
     }
 
     private doDeleteAction(keepChildren: boolean) {
