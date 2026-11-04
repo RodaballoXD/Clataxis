@@ -33,6 +33,19 @@ export class TextSyntaxEditor {
         };
         this.compact = () => this.format(null);
         this.indent = () => this.format(4);
+        this.copyText = async () => {
+            const text = this.editor?.getValue();
+            if (text === undefined)
+                return;
+            try {
+                await navigator.clipboard.writeText(text);
+                this.controls.notificationEl.textContent = 'Texto copiado.';
+            }
+            catch (error) {
+                console.error('Could not copy the text editor contents.', error);
+                this.controls.notificationEl.textContent = 'No se pudo copiar el texto.';
+            }
+        };
         this.editorContainerEl = document.createElement('div');
         this.editorContainerEl.className = 'syntax-monaco-editor';
         this.onValidChange = onValidChange;
@@ -43,6 +56,7 @@ export class TextSyntaxEditor {
         container.appendChild(this.editorContainerEl);
         this.controls.compactButtonEl.addEventListener('click', this.compact);
         this.controls.indentButtonEl.addEventListener('click', this.indent);
+        this.controls.copyTextButtonEl.addEventListener('click', this.copyText);
         void this.initialize();
     }
     destroy() {
@@ -51,6 +65,7 @@ export class TextSyntaxEditor {
         this.editor?.dispose();
         this.controls.compactButtonEl.removeEventListener('click', this.compact);
         this.controls.indentButtonEl.removeEventListener('click', this.indent);
+        this.controls.copyTextButtonEl.removeEventListener('click', this.copyText);
     }
     setAnalysis(json) {
         this.initialText = reducedJSONToSyntaxRepr(json, 4).repr;
@@ -67,6 +82,7 @@ export class TextSyntaxEditor {
         this.controls.compactButtonEl.disabled = false;
         this.controls.indentButtonEl.disabled = false;
         this.controls.copyToGoogleDocsButtonEl.disabled = false;
+        this.controls.copyTextButtonEl.disabled = false;
     }
     async initialize() {
         try {
@@ -97,6 +113,7 @@ export class TextSyntaxEditor {
                 },
                 matchBrackets: 'always'
             });
+            this.controls.copyTextButtonEl.disabled = false;
             this.changeSubscription = this.editor.onDidChangeModelContent(this.onInput);
             this.onInput();
         }
@@ -106,6 +123,7 @@ export class TextSyntaxEditor {
             this.controls.notificationEl.textContent = 'No se pudo cargar el editor de texto.';
             this.controls.compactButtonEl.disabled = true;
             this.controls.indentButtonEl.disabled = true;
+            this.controls.copyTextButtonEl.disabled = true;
         }
     }
     format(indent) {

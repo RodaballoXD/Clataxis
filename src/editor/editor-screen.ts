@@ -6,6 +6,7 @@ export function createEditorInterface(
     onModeChange: (mode: EditorMode) => void,
     mode: EditorMode,
     onBeforeAction: () => void,
+    onCopyLink: () => void,
     onCopyToGoogleDocs: () => void
 ): EditorInterfaceEls {
     const interfaceContainerEl = document.createElement('div');
@@ -49,7 +50,7 @@ export function createEditorInterface(
     separatorEl.className = 'editor-mode-separator';
     separatorEl.setAttribute('role', 'separator');
 
-    const returnButtonEl = createButton('Volver a introducir oración', 'M19 12H5m0 0 6 6m-6-6 6-6', 'editor-mode-icon');
+    const returnButtonEl = createButton('Volver a introducir oración', 'M3 10.5 12 3l9 7.5M5 9v11h14V9M9 20v-6h6v6', 'editor-mode-icon');
     returnButtonEl.className = 'editor-return-button';
     const returnButtonLabelEl = document.createElement('span');
     returnButtonLabelEl.textContent = 'Volver';
@@ -67,33 +68,112 @@ export function createEditorInterface(
     });
     interfaceContainerEl.addEventListener('click', (event) => {
         if (!modeSelectorEl.contains(event.target as Node)) setModeDropdownOpen(false);
+        if (!copyMenuEl.contains(event.target as Node)) setCopyDropdownOpen(false);
     });
     interfaceContainerEl.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && modeMenuButtonEl.getAttribute('aria-expanded') === 'true') {
+        if (event.key !== 'Escape') return;
+
+        if (modeMenuButtonEl.getAttribute('aria-expanded') === 'true') {
             event.preventDefault();
             setModeDropdownOpen(false);
             modeMenuButtonEl.focus();
+        } else if (copyMenuButtonEl.getAttribute('aria-expanded') === 'true') {
+            event.preventDefault();
+            setCopyDropdownOpen(false);
+            copyMenuButtonEl.focus();
         }
     });
     modeSelectorEl.append(modeMenuButtonEl, modeDropdownEl);
 
-    const copyToGoogleDocsButtonEl = createButton(
-        'Copiar análisis como tabla para Google Docs',
-        'M9 8V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-3 M5 8h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z',
+    const copyMenuEl = document.createElement('div');
+    copyMenuEl.className = 'editor-copy-menu';
+    const copyMenuButtonEl = createButton(
+        'Abrir menú para copiar',
+        'M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6 M6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6 M18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6 M8.6 13.5l6.8 4 M15.4 6.5l-6.8 4',
         'editor-copy-icon'
     );
-    copyToGoogleDocsButtonEl.className = 'editor-copy-docs-button';
+    copyMenuButtonEl.className = 'editor-copy-docs-button';
+    copyMenuButtonEl.setAttribute('aria-haspopup', 'true');
+    copyMenuButtonEl.setAttribute('aria-expanded', 'false');
+    copyMenuButtonEl.setAttribute('aria-controls', 'editor-copy-dropdown');
+
+    const copyDropdownEl = document.createElement('div');
+    copyDropdownEl.id = 'editor-copy-dropdown';
+    copyDropdownEl.className = 'editor-copy-dropdown';
+    copyDropdownEl.hidden = true;
+    copyDropdownEl.setAttribute('role', 'group');
+    copyDropdownEl.setAttribute('aria-label', 'Opciones para copiar');
+
+    const copyLinkButtonEl = createButton(
+        'Copiar enlace',
+        'M10 13a5 5 0 0 0 7.07 0l3-3A5 5 0 0 0 13 2.93l-1.72 1.71 M14 11a5 5 0 0 0-7.07 0l-3 3A5 5 0 0 0 11 21.07l1.71-1.71',
+        'editor-mode-icon'
+    );
+    copyLinkButtonEl.className = 'editor-copy-option';
+    const copyLinkLabelEl = document.createElement('span');
+    copyLinkLabelEl.textContent = 'Copiar enlace';
+    copyLinkButtonEl.appendChild(copyLinkLabelEl);
+    copyLinkButtonEl.addEventListener('click', () => {
+        setCopyDropdownOpen(false);
+        onBeforeAction();
+        onCopyLink();
+    });
+
+    const copyToGoogleDocsButtonEl = createButton(
+        'Copiar como tabla',
+        'M3 4h18v16H3z M3 10h18 M9 4v16 M15 4v16',
+        'editor-mode-icon'
+    );
+    copyToGoogleDocsButtonEl.className = 'editor-copy-option';
+    const copyTableLabelEl = document.createElement('span');
+    copyTableLabelEl.textContent = 'Copiar como tabla';
+    copyToGoogleDocsButtonEl.appendChild(copyTableLabelEl);
     copyToGoogleDocsButtonEl.addEventListener('click', () => {
+        setCopyDropdownOpen(false);
         onBeforeAction();
         onCopyToGoogleDocs();
     });
+    copyDropdownEl.append(copyLinkButtonEl, copyToGoogleDocsButtonEl);
+    copyMenuButtonEl.addEventListener('click', () => {
+        const isOpen = copyMenuButtonEl.getAttribute('aria-expanded') === 'true';
+        setCopyDropdownOpen(!isOpen);
+    });
+    copyMenuEl.append(copyMenuButtonEl, copyDropdownEl);
+
+    const copyTextButtonEl = createButton(
+        'Copiar texto del editor',
+        'M8 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-2 M9 3h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z',
+        'editor-copy-text-icon'
+    );
+    copyTextButtonEl.className = 'editor-copy-text-button';
+    copyTextButtonEl.disabled = true;
+
+    const textControlsEl = document.createElement('div');
+    textControlsEl.className = 'editor-floating-panel editor-text-controls';
+    const compactButtonEl = createButton(
+        'Compactar el análisis. Ideal para compartirlo con un LLM',
+        'M8 4H5a2 2 0 0 0-2 2v3m18 0V6a2 2 0 0 0-2-2h-3M3 15v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3M8 8l-3 4 3 4m8-8 3 4-3 4'
+    );
+    const indentButtonEl = createButton(
+        'Embellecer e indentar el análisis',
+        'M4 6h16M10 10h10M10 14h10M4 18h16M4 10l3 2-3 2'
+    );
+    textControlsEl.replaceChildren(compactButtonEl, indentButtonEl);
+
     const topRightControlsEl = document.createElement('div');
     topRightControlsEl.className = 'editor-top-right-controls';
-    topRightControlsEl.appendChild(copyToGoogleDocsButtonEl);
+    topRightControlsEl.append(copyMenuEl, textControlsEl, copyTextButtonEl);
 
     function setModeDropdownOpen(isOpen: boolean) {
         modeDropdownEl.hidden = !isOpen;
         modeMenuButtonEl.setAttribute('aria-expanded', String(isOpen));
+    }
+
+    function setCopyDropdownOpen(isOpen: boolean) {
+        copyDropdownEl.hidden = !isOpen;
+        copyMenuButtonEl.setAttribute('aria-expanded', String(isOpen));
+        copyMenuButtonEl.setAttribute('aria-label', isOpen ? 'Cerrar opciones para copiar' : 'Abrir menú para copiar');
+        copyMenuButtonEl.title = isOpen ? 'Cerrar opciones para copiar' : 'Abrir menú para copiar';
     }
 
     function closeModeDropdown() {
@@ -106,14 +186,6 @@ export function createEditorInterface(
     const zoomOutButtonEl = createButton('Reducir zoom (-)', 'M10.5 4.5a6 6 0 1 0 0 12a6 6 0 0 0 0-12 M15 15l5 5 M7.5 10.5h6');
     const zoomInButtonEl = createButton('Aumentar zoom (+)', 'M10.5 4.5a6 6 0 1 0 0 12a6 6 0 0 0 0-12 M15 15l5 5 M10.5 7.5v6 M7.5 10.5h6');
     zoomControlsEl.replaceChildren(zoomOutButtonEl, zoomInButtonEl);
-
-    const textControlsEl = document.createElement('div');
-    textControlsEl.className = 'editor-floating-panel editor-text-controls';
-    const compactButtonEl = createButton('Compactar el análisis. Ideal para compartirlo con un LLM');
-    compactButtonEl.textContent = 'Compactar';
-    const indentButtonEl = createButton('Embellecer e indentar el análisis');
-    indentButtonEl.textContent = 'Indentar';
-    textControlsEl.replaceChildren(compactButtonEl, indentButtonEl);
 
     const rootContainerEl = document.createElement('section');
     rootContainerEl.id = 'editor-root-container';
@@ -146,7 +218,6 @@ export function createEditorInterface(
         modeSelectorEl,
         topRightControlsEl,
         zoomControlsEl,
-        textControlsEl,
         guidedPanelEl,
         rootContainerEl,
         historyPanelEl
@@ -164,7 +235,8 @@ export function createEditorInterface(
         undoButtonEl,
         redoButtonEl,
         notificationEl,
-        copyToGoogleDocsButtonEl
+        copyToGoogleDocsButtonEl,
+        copyTextButtonEl
     };
 }
 
@@ -193,6 +265,7 @@ export interface EditorInterfaceEls {
     redoButtonEl: HTMLButtonElement;
     notificationEl: HTMLDivElement;
     copyToGoogleDocsButtonEl: HTMLButtonElement;
+    copyTextButtonEl: HTMLButtonElement;
 }
 
 export type EditorMode = 'tree' | 'text';

@@ -100,8 +100,13 @@ export function createEditorHelp(
     helpButtonEl.className = 'editor-help-button';
     helpButtonEl.setAttribute('aria-controls', panelEl.id);
     helpButtonEl.addEventListener('click', () => {
-        setOpen(true);
-        closeButtonEl.focus();
+        if (isOpen) {
+            setOpen(false);
+            onClose();
+        } else {
+            setOpen(true);
+            closeButtonEl.focus();
+        }
     });
 
     const reopenHintEl = document.createElement('p');
@@ -166,7 +171,8 @@ export function createEditorHelp(
 
         isOpen = nextIsOpen;
         panelEl.hidden = !isOpen;
-        helpButtonEl.hidden = isOpen;
+        helpButtonEl.setAttribute('aria-label', isOpen ? 'Cerrar guía del editor' : 'Abrir guía del editor');
+        helpButtonEl.title = isOpen ? 'Cerrar guía del editor' : 'Abrir guía del editor';
         helpButtonEl.setAttribute('aria-expanded', String(isOpen));
         if (isOpen) {
             hideReopenHint();
@@ -198,8 +204,9 @@ export function createEditorHelp(
     currentStep = Math.max(0, Math.min(initialState.step, EDITOR_GUIDE_STEPS.length - 1));
     renderStep();
     panelEl.hidden = !isOpen;
-    helpButtonEl.hidden = isOpen;
     helpButtonEl.setAttribute('aria-expanded', String(isOpen));
+    helpButtonEl.setAttribute('aria-label', isOpen ? 'Cerrar guía del editor' : 'Abrir guía del editor');
+    helpButtonEl.title = isOpen ? 'Cerrar guía del editor' : 'Abrir guía del editor';
     reopenHintEl.hidden = true;
     if (showInitialHint && !isOpen) {
         initialHintTimeout = window.setTimeout(() => {

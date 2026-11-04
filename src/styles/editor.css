@@ -9,7 +9,8 @@
 
 .editor-floating-panel > button,
 .editor-mode-selector button,
-.editor-copy-docs-button {
+.editor-copy-docs-button,
+.editor-copy-text-button {
     height: 2.25rem;
     min-width: 2.25rem;
     border: 1px solid #d7dfe8;
@@ -26,13 +27,15 @@
 
 .editor-floating-panel > button:hover,
 .editor-mode-selector button:hover,
-.editor-copy-docs-button:hover {
+.editor-copy-docs-button:hover,
+.editor-copy-text-button:hover {
     background: #f7f9fb;
 }
 
 .editor-floating-panel > button:focus-visible,
 .editor-mode-selector button:focus-visible,
-.editor-copy-docs-button:focus-visible {
+.editor-copy-docs-button:focus-visible,
+.editor-copy-text-button:focus-visible {
     outline: 2px solid rgba(31, 122, 140, 0.2);
     outline-offset: 2px;
 }
@@ -60,10 +63,6 @@
 }
 
 .editor-text-controls {
-    position: fixed;
-    top: 4.25rem;
-    right: 1rem;
-    z-index: 10;
     display: none;
 }
 
@@ -76,6 +75,11 @@
 }
 
 .editor-text-controls > button {
+    box-sizing: border-box;
+    width: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
     font-size: 0.85rem;
 }
 
@@ -251,6 +255,10 @@
 }
 
 .editor-help-button {
+    position: fixed;
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+    left: 1rem;
+    z-index: 21;
     box-sizing: border-box;
     width: 2.75rem;
     height: 2.75rem;
@@ -261,8 +269,8 @@
 
 .editor-help-reopen-hint {
     position: absolute;
-    right: 1rem;
-    top: 4rem;
+    bottom: calc(4.25rem + env(safe-area-inset-bottom));
+    left: 1rem;
     width: max-content;
     max-width: min(17rem, calc(100vw - 2rem));
     box-sizing: border-box;
@@ -359,9 +367,41 @@
     backdrop-filter: blur(0.75rem);
 }
 
+.editor-copy-text-button {
+    box-sizing: border-box;
+    width: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    border-radius: 0.9rem;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 0.25rem 0.9rem rgba(29, 36, 48, 0.12);
+    backdrop-filter: blur(0.75rem);
+}
+
+.editor-copy-text-button:disabled {
+    color: #9aa3ae;
+    cursor: default;
+    opacity: 0.58;
+}
+
+.editor-copy-text-button:disabled:hover {
+    background: rgba(255, 255, 255, 0.96);
+}
+
 .editor-copy-icon {
     width: 1.25rem;
-    height: 1.5rem;
+    height: 1.25rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+}
+
+.editor-copy-text-icon {
+    width: 1.25rem;
+    height: 1.25rem;
     fill: none;
     stroke: currentColor;
     stroke-linecap: round;
@@ -375,10 +415,10 @@
     opacity: 0.58;
 }
 
-.editor-mode-selector .editor-mode-dropdown {
+.editor-mode-selector .editor-mode-dropdown,
+.editor-copy-dropdown {
     position: absolute;
     top: calc(100% + 0.5rem);
-    left: 0;
     display: grid;
     gap: 0.2rem;
     width: 13rem;
@@ -390,18 +430,53 @@
     backdrop-filter: blur(0.75rem);
 }
 
-.editor-mode-selector .editor-mode-dropdown[hidden] {
+.editor-mode-selector .editor-mode-dropdown {
+    left: 0;
+}
+
+.editor-copy-menu {
+    position: relative;
+}
+
+.editor-copy-dropdown {
+    right: 0;
+}
+
+.editor-mode-selector .editor-mode-dropdown[hidden],
+.editor-copy-dropdown[hidden] {
     display: none;
 }
 
 .editor-mode-selector .editor-mode-option,
-.editor-mode-selector .editor-return-button {
+.editor-mode-selector .editor-return-button,
+.editor-copy-dropdown .editor-copy-option {
     width: 100%;
     height: 2.5rem;
     border-color: transparent;
     border-radius: 0.65rem;
     background: transparent;
     font-weight: 600;
+}
+
+.editor-copy-dropdown .editor-copy-option {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    text-align: left;
+}
+
+.editor-copy-dropdown .editor-copy-option span {
+    flex: 1;
+}
+
+.editor-copy-dropdown .editor-copy-option:disabled {
+    color: #9aa3ae;
+    cursor: default;
+    opacity: 0.58;
+}
+
+.editor-copy-dropdown .editor-copy-option:disabled:hover {
+    background: transparent;
 }
 
 .editor-mode-selector .editor-mode-option[aria-pressed="true"] {
@@ -415,6 +490,11 @@
 
 .editor-mode-selector .editor-return-button:hover {
     color: #1d2430;
+}
+
+.editor-screen[data-mode="text"] .editor-copy-menu,
+.editor-screen:not([data-mode="text"]) .editor-copy-text-button {
+    display: none;
 }
 
 .editor-mode-separator {
@@ -467,17 +547,17 @@
         padding: 7.25rem 1rem 4.5rem;
     }
 
-    .editor-text-controls {
-        right: 0.75rem;
-    }
-
     .editor-top-right-controls {
         top: 0.75rem;
         right: 0.75rem;
     }
 
     .editor-text-controls > button {
-        padding: 0 0.55rem;
+        padding: 0;
+    }
+
+    .editor-help-button {
+        left: 0.75rem;
     }
 
     .editor-help-panel {
@@ -506,8 +586,8 @@
     }
 
     .editor-help-reopen-hint {
-        right: 0.75rem;
-        top: 3.75rem;
+        left: 0.75rem;
+        max-width: calc(100vw - 1.5rem);
     }
 
 }

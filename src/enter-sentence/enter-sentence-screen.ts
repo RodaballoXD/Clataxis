@@ -82,7 +82,7 @@ export function createEnterSentenceEl(onComenzar: (sentence: string) => void): H
     const aboutButtonEl = document.createElement('button');
     aboutButtonEl.className = 'about-button';
     aboutButtonEl.type = 'button';
-    aboutButtonEl.textContent = 'Sobre Clataxis';
+    aboutButtonEl.textContent = 'Acerca de Clataxis';
 
     const aboutDialog = createAboutDialog();
     aboutButtonEl.addEventListener('click', () => {

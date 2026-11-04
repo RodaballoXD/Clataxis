@@ -71,7 +71,7 @@ export function createEnterSentenceEl(onComenzar) {
     const aboutButtonEl = document.createElement('button');
     aboutButtonEl.className = 'about-button';
     aboutButtonEl.type = 'button';
-    aboutButtonEl.textContent = 'Sobre Clataxis';
+    aboutButtonEl.textContent = 'Acerca de Clataxis';
     const aboutDialog = createAboutDialog();
     aboutButtonEl.addEventListener('click', () => {
         aboutDialog.dialogEl.showModal();

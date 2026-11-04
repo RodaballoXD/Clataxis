@@ -165,6 +165,8 @@ export class App {
             this.setScreen('sentence', undefined, 'push');
         };
         const editorContainerEls = createEditorInterface(onReturnToSentenceScreen, (nextMode) => this.switchEditorMode(nextMode), mode, () => this.activeEditor?.commitPendingEdit(), () => {
+            void this.copyEditorLink(editorContainerEls.notificationEl);
+        }, () => {
             void this.copyAnalysisToGoogleDocs(editorContainerEls.notificationEl);
         });
         editorContainerEls.undoButtonEl.addEventListener('click', this.undo);
@@ -228,6 +230,16 @@ export class App {
         catch (error) {
             console.error('Could not copy the analysis table for Google Docs.', error);
             this.showCopyNotification(notificationEl, 'No se pudo copiar la tabla para Google Docs.');
+        }
+    }
+    async copyEditorLink(notificationEl) {
+        try {
+            await navigator.clipboard.writeText(window.location.href);
+            this.showCopyNotification(notificationEl, 'Enlace copiado.');
+        }
+        catch (error) {
+            console.error('Could not copy the editor link.', error);
+            this.showCopyNotification(notificationEl, 'No se pudo copiar el enlace.');
         }
     }
     showCopyNotification(notificationEl, message) {
