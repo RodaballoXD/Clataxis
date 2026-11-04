@@ -59,6 +59,7 @@ export class TextSyntaxEditor {
         this.controls.notificationEl.textContent = '';
         this.controls.compactButtonEl.disabled = false;
         this.controls.indentButtonEl.disabled = false;
+        this.controls.copyToGoogleDocsButtonEl.disabled = false;
     }
 
     private async initialize() {
@@ -111,11 +112,13 @@ export class TextSyntaxEditor {
             this.controls.notificationEl.textContent = '';
             this.controls.compactButtonEl.disabled = false;
             this.controls.indentButtonEl.disabled = false;
+            this.controls.copyToGoogleDocsButtonEl.disabled = false;
             this.onValidChange(json);
         } catch {
             this.controls.notificationEl.textContent = 'La sintaxis no es válida. El análisis no se ha actualizado.';
             this.controls.compactButtonEl.disabled = true;
             this.controls.indentButtonEl.disabled = true;
+            this.controls.copyToGoogleDocsButtonEl.disabled = true;
         }
     };
 

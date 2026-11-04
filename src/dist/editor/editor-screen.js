@@ -1,6 +1,6 @@
 import { createIcon } from "../shared/icons.js";
 import { createButton } from "../shared/button.js";
-export function createEditorInterface(onReturnToSentenceScreen, onModeChange, mode, onBeforeAction) {
+export function createEditorInterface(onReturnToSentenceScreen, onModeChange, mode, onBeforeAction, onCopyToGoogleDocs) {
     const interfaceContainerEl = document.createElement('div');
     interfaceContainerEl.id = 'editor-container';
     interfaceContainerEl.className = 'editor-screen';
@@ -64,6 +64,14 @@ export function createEditorInterface(onReturnToSentenceScreen, onModeChange, mo
         }
     });
     modeSelectorEl.append(modeMenuButtonEl, modeDropdownEl);
+    const copyToGoogleDocsButtonEl = createButton('Copiar análisis como tabla para Google Docs', 'M4 5h16v14H4z M4 10h16 M4 15h16 M9 5v14 M15 5v14');
+    copyToGoogleDocsButtonEl.className = 'editor-copy-docs-button';
+    copyToGoogleDocsButtonEl.textContent = 'Copiar tabla';
+    copyToGoogleDocsButtonEl.addEventListener('click', () => {
+        onBeforeAction();
+        onCopyToGoogleDocs();
+    });
+    modeSelectorEl.appendChild(copyToGoogleDocsButtonEl);
     function setModeDropdownOpen(isOpen) {
         modeDropdownEl.hidden = !isOpen;
         modeMenuButtonEl.setAttribute('aria-expanded', String(isOpen));
@@ -115,7 +123,8 @@ export function createEditorInterface(onReturnToSentenceScreen, onModeChange, mo
         indentButtonEl,
         undoButtonEl,
         redoButtonEl,
-        notificationEl
+        notificationEl,
+        copyToGoogleDocsButtonEl
     };
 }
 function createModeButton(label, iconPath, isActive) {

@@ -3,6 +3,7 @@ import { SyntaxEditor, type SyntaxEditorViewState } from "./editor/editor.js";
 import type { EditorHelpState } from "./editor/editor-help.js";
 import type { ReducedJSON } from "./editor/tree.js";
 import { sentenceToReducedJSON } from "./editor/tree.js";
+import { createGoogleDocsTableClipboardData } from "./editor/google-docs-table.js";
 import { reducedJSONToSyntaxRepr } from "./editor/tree-format.js";
 import { TextSyntaxEditor } from "./editor/text-editor.js";
 import { createEnterSentenceEl } from "./enter-sentence/enter-sentence-screen.js";
@@ -22,6 +23,7 @@ export class App {
     private editorHelpInitialHintPending = false;
     private undoStack: ReducedJSON[] = [];
     private redoStack: ReducedJSON[] = [];
+    private copyNotificationTimeout: number | null = null;
 
     constructor(appEl: HTMLDivElement) {
         this.appEl = appEl;
@@ -121,7 +123,10 @@ export class App {
             onReturnToSentenceScreen,
             (nextMode) => this.switchEditorMode(nextMode),
             mode,
-            () => this.activeEditor?.commitPendingEdit()
+            () => this.activeEditor?.commitPendingEdit(),
+            () => {
+                void this.copyAnalysisToGoogleDocs(editorContainerEls.notificationEl);
+            }
         );
         editorContainerEls.undoButtonEl.addEventListener('click', this.undo);
         editorContainerEls.redoButtonEl.addEventListener('click', this.redo);
@@ -190,6 +195,40 @@ export class App {
         this.currentEditorJSON = cloneReducedJSON(nextJSON);
         setEditorJSONInURL(this.currentEditorJSON);
         this.updateHistoryButtons();
+    }
+
+    private async copyAnalysisToGoogleDocs(notificationEl: HTMLDivElement) {
+        const json = this.currentEditorJSON;
+        if (!json) return;
+
+        try {
+            if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
+                throw new Error('Rich clipboard writing is not supported in this browser');
+            }
+
+            const { html, text } = createGoogleDocsTableClipboardData(json);
+            const item = new ClipboardItem({
+                'text/html': new Blob([html], { type: 'text/html' }),
+                'text/plain': new Blob([text], { type: 'text/plain' })
+            });
+            await navigator.clipboard.write([item]);
+            this.showCopyNotification(notificationEl, 'Tabla copiada. Pégala en Google Docs.');
+        } catch (error) {
+            console.error('Could not copy the analysis table for Google Docs.', error);
+            this.showCopyNotification(notificationEl, 'No se pudo copiar la tabla para Google Docs.');
+        }
+    }
+
+    private showCopyNotification(notificationEl: HTMLDivElement, message: string) {
+        if (this.copyNotificationTimeout !== null) {
+            window.clearTimeout(this.copyNotificationTimeout);
+        }
+
+        notificationEl.textContent = message;
+        this.copyNotificationTimeout = window.setTimeout(() => {
+            if (notificationEl.textContent === message) notificationEl.textContent = '';
+            this.copyNotificationTimeout = null;
+        }, 2500);
     }
 
     private undo = () => {

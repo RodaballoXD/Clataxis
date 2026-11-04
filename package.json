@@ -7,6 +7,7 @@
   },
   "scripts": {
     "build": "tsc --project tsconfig.json && node scripts/build-site.mjs",
-    "dev": "npm run build && node scripts/serve.mjs"
+    "dev": "npm run build && node scripts/serve.mjs",
+    "test": "npm run build && node --test tests\\google-docs-table.test.mjs"
   }
 }
