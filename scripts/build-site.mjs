@@ -12,6 +12,10 @@ copyFileSync(resolve(projectRoot, 'src', 'index.html'), resolve(siteDirectory, '
 copyFileSync(resolve(projectRoot, 'src', 'favicon.svg'), resolve(siteDirectory, 'favicon.svg'));
 copyDirectory(resolve(projectRoot, 'src', 'styles'), resolve(siteDirectory, 'styles'));
 copyDirectory(resolve(projectRoot, 'src', 'dist'), resolve(siteDirectory, 'dist'));
+copyFileSync(
+    resolve(projectRoot, 'src', 'enter-sentence', 'about-page.md'),
+    resolve(siteDirectory, 'dist', 'enter-sentence', 'about-page.md')
+);
 copyDirectory(resolve(projectRoot, 'node_modules', 'monaco-editor', 'min', 'vs'), resolve(siteDirectory, 'vs'));
 
 console.log(`Static site assembled at ${siteDirectory}`);

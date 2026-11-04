@@ -4,3 +4,4 @@ examples/
 build_on_ctrl_s.py
 .agents/
 __pycache__/
+.VSCodeCounter/
