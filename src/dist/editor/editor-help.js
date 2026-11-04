@@ -32,7 +32,7 @@ const EDITOR_GUIDE_STEPS = [
         description: 'Ctrl + Z para deshacer, Ctrl + Y para rehacer, Entrar para terminar una edición... Coloca el cursor sobre cualquier botón para ver su atajo de teclado.'
     }
 ];
-export function createEditorHelp(initialState, onClose, showInitialHint = false) {
+export function createEditorHelp(initialState, onClose, topRightControlsEl, showInitialHint = false) {
     const containerEl = document.createElement('div');
     containerEl.className = 'editor-help';
     const panelEl = document.createElement('section');
@@ -74,7 +74,8 @@ export function createEditorHelp(initialState, onClose, showInitialHint = false)
     reopenHintEl.textContent = 'Puedes consultar aquí la guía del editor.';
     reopenHintEl.setAttribute('role', 'status');
     panelEl.append(closeButtonEl, progressEl, headingEl, descriptionEl, previousButtonEl, nextButtonEl);
-    containerEl.append(panelEl, helpButtonEl, reopenHintEl);
+    topRightControlsEl.appendChild(helpButtonEl);
+    containerEl.append(panelEl, reopenHintEl);
     let currentStep = 0;
     let isOpen = initialState.isOpen;
     let reopenHintTimeout = null;
@@ -164,6 +165,7 @@ export function createEditorHelp(initialState, onClose, showInitialHint = false)
         destroy: () => {
             hideReopenHint();
             containerEl.remove();
+            helpButtonEl.remove();
         }
     };
 }

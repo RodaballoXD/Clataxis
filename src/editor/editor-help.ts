@@ -56,6 +56,7 @@ const EDITOR_GUIDE_STEPS: readonly EditorGuideStep[] = [
 export function createEditorHelp(
     initialState: EditorHelpState,
     onClose: () => void,
+    topRightControlsEl: HTMLElement,
     showInitialHint = false
 ): EditorHelpView {
     const containerEl = document.createElement('div');
@@ -116,7 +117,8 @@ export function createEditorHelp(
         previousButtonEl,
         nextButtonEl
     );
-    containerEl.append(panelEl, helpButtonEl, reopenHintEl);
+    topRightControlsEl.appendChild(helpButtonEl);
+    containerEl.append(panelEl, reopenHintEl);
 
     let currentStep = 0;
     let isOpen = initialState.isOpen;
@@ -214,6 +216,7 @@ export function createEditorHelp(
         destroy: () => {
             hideReopenHint();
             containerEl.remove();
+            helpButtonEl.remove();
         }
     };
 }

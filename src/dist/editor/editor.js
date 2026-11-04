@@ -259,7 +259,7 @@ export class SyntaxEditor {
         this.controls = controls;
         this.editorHelp = initialHelpState === null
             ? null
-            : createEditorHelp(initialHelpState, onHelpDismissed, showInitialHelpHint);
+            : createEditorHelp(initialHelpState, onHelpDismissed, controls.topRightControlsEl, showInitialHelpHint);
     }
     mount(container) {
         if (this.editorHelp) {

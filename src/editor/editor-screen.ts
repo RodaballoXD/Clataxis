@@ -79,15 +79,17 @@ export function createEditorInterface(
 
     const copyToGoogleDocsButtonEl = createButton(
         'Copiar análisis como tabla para Google Docs',
-        'M4 5h16v14H4z M4 10h16 M4 15h16 M9 5v14 M15 5v14'
+        'M9 8V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-3 M5 8h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z',
+        'editor-copy-icon'
     );
     copyToGoogleDocsButtonEl.className = 'editor-copy-docs-button';
-    copyToGoogleDocsButtonEl.textContent = 'Copiar tabla';
     copyToGoogleDocsButtonEl.addEventListener('click', () => {
         onBeforeAction();
         onCopyToGoogleDocs();
     });
-    modeSelectorEl.appendChild(copyToGoogleDocsButtonEl);
+    const topRightControlsEl = document.createElement('div');
+    topRightControlsEl.className = 'editor-top-right-controls';
+    topRightControlsEl.appendChild(copyToGoogleDocsButtonEl);
 
     function setModeDropdownOpen(isOpen: boolean) {
         modeDropdownEl.hidden = !isOpen;
@@ -142,6 +144,7 @@ export function createEditorInterface(
 
     interfaceContainerEl.replaceChildren(
         modeSelectorEl,
+        topRightControlsEl,
         zoomControlsEl,
         textControlsEl,
         guidedPanelEl,
@@ -151,6 +154,7 @@ export function createEditorInterface(
 
     return {
         interfaceContainerEl,
+        topRightControlsEl,
         rootContainerEl,
         guidedPanelEl,
         zoomInButtonEl,
@@ -178,6 +182,7 @@ function createModeButton(label: string, iconPath: string, isActive: boolean): H
 
 export interface EditorInterfaceEls {
     interfaceContainerEl: HTMLDivElement;
+    topRightControlsEl: HTMLDivElement;
     rootContainerEl: HTMLElement;
     guidedPanelEl: HTMLElement;
     zoomInButtonEl: HTMLButtonElement;
