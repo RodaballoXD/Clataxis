@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "monaco-editor": "^0.51.0"
   },
   "devDependencies": {
