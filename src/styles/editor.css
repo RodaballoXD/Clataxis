@@ -28,6 +28,7 @@
 
 .editor-floating-panel > button:hover,
 .editor-mode-selector button:hover,
+.editor-copy-dropdown .editor-copy-option:hover,
 .editor-copy-docs-button:hover,
 .editor-copy-text-button:hover,
 .editor-enable-editing-button:hover {

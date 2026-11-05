@@ -123,7 +123,7 @@ export function createEditorInterface(
     });
 
     const copyToGoogleDocsButtonEl = createButton(
-        'Copiar como tabla',
+        'Copiar como tabla para Google Docs',
         'M3 4h18v16H3z M3 10h18 M9 4v16 M15 4v16',
         'editor-mode-icon'
     );
@@ -159,7 +159,7 @@ export function createEditorInterface(
         'M8 4H5a2 2 0 0 0-2 2v3m18 0V6a2 2 0 0 0-2-2h-3M3 15v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3M8 8l-3 4 3 4m8-8 3 4-3 4'
     );
     const indentButtonEl = createButton(
-        'Embellecer e indentar el análisis',
+        'Embellecer y aplicar sangrado al análisis',
         'M4 6h16M10 10h10M10 14h10M4 18h16M4 10l3 2-3 2'
     );
     textControlsEl.replaceChildren(compactButtonEl, indentButtonEl);
