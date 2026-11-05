@@ -17,6 +17,7 @@ copyFileSync(
     resolve(siteDirectory, 'dist', 'enter-sentence', 'about-page.md')
 );
 copyDirectory(resolve(projectRoot, 'node_modules', 'monaco-editor', 'min', 'vs'), resolve(siteDirectory, 'vs'));
+copyDirectory(resolve(projectRoot, 'node_modules', '@vercel', 'analytics', 'dist'), resolve(siteDirectory, 'node_modules', '@vercel', 'analytics', 'dist'));
 
 console.log(`Static site assembled at ${siteDirectory}`);
 

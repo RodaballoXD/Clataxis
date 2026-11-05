@@ -1,5 +1,8 @@
+import { inject } from "@vercel/analytics";
 import { App } from "./app.js";
 import { RootNodeEl, SyntaxNodeEl, WordNodeEl } from "./editor/elements.js";
+// Initialize Vercel Web Analytics
+inject();
 customElements.define('root-node', RootNodeEl);
 customElements.define('syntax-node', SyntaxNodeEl);
 customElements.define('word-node', WordNodeEl);
