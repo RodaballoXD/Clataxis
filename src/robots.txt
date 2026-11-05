@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://clataxis.vercel.app/sitemap.xml

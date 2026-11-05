@@ -10,6 +10,8 @@ mkdirSync(siteDirectory, { recursive: true });
 
 copyFileSync(resolve(projectRoot, 'src', 'index.html'), resolve(siteDirectory, 'index.html'));
 copyFileSync(resolve(projectRoot, 'src', 'favicon.svg'), resolve(siteDirectory, 'favicon.svg'));
+copyFileSync(resolve(projectRoot, 'src', 'robots.txt'), resolve(siteDirectory, 'robots.txt'));
+copyFileSync(resolve(projectRoot, 'src', 'sitemap.xml'), resolve(siteDirectory, 'sitemap.xml'));
 copyDirectory(resolve(projectRoot, 'src', 'styles'), resolve(siteDirectory, 'styles'));
 copyDirectory(resolve(projectRoot, 'src', 'dist'), resolve(siteDirectory, 'dist'));
 copyFileSync(
