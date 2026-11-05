@@ -12,6 +12,13 @@
     <link rel="stylesheet" href="./styles/autocomplete.css">
     <link rel="stylesheet" href="./styles/guided.css">
     <link rel="stylesheet" href="./styles/syntax-tree.css">
+    <script type="importmap">
+        {
+            "imports": {
+                "@vercel/analytics": "./node_modules/@vercel/analytics/dist/index.mjs"
+            }
+        }
+    </script>
 </head>
 
 <body>
@@ -19,11 +26,6 @@
 
     <script src="./vs/loader.js"></script>
     <script type="module" src="./dist/main.js"></script>
-
-    <script>
-        import { inject } from "@vercel/analytics";
-        inject();
-    </script>
 </body>
 
 </html>
