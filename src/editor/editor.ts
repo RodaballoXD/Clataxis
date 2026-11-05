@@ -14,11 +14,13 @@ export interface SyntaxEditorViewState {
     scrollTop: number;
 }
 
-const DEFAULT_VIEW_STATE: SyntaxEditorViewState = {
-    zoomLevel: 1,
-    scrollLeft: 0,
-    scrollTop: 0
-};
+function getDefaultViewState(): SyntaxEditorViewState {
+    return {
+        zoomLevel: window.matchMedia('(max-width: 560px)').matches ? 0.6 : 1,
+        scrollLeft: 0,
+        scrollTop: 0
+    };
+}
 
 export class SyntaxEditor {
     readonly supportsHistory: boolean = true;
@@ -63,7 +65,7 @@ export class SyntaxEditor {
         json: ReducedJSON,
         onChange: (json: ReducedJSON) => void = () => {},
         controls: EditorInterfaceEls,
-        initialViewState: SyntaxEditorViewState = DEFAULT_VIEW_STATE,
+        initialViewState: SyntaxEditorViewState = getDefaultViewState(),
         initialHelpState: EditorHelpState | null = { isOpen: true, step: 0 },
         onHelpDismissed: () => void = () => {},
         showInitialHelpHint = false
@@ -385,6 +387,8 @@ export class SyntaxEditor {
     };
 
     private onKeyDown = (event: KeyboardEvent) => {
+        if (this.controls.interfaceContainerEl.dataset.readonly === 'true') return;
+
         if (this.state.editing.isEditing) {
             if (this.autocomplete.handleKeyDown(event)) {
                 return;
@@ -463,6 +467,8 @@ export class SyntaxEditor {
     };
 
     private onPointerDown = (event: PointerEvent) => {
+        if (this.controls.interfaceContainerEl.dataset.readonly === 'true') return;
+
         if (event.target instanceof Element) {
             const handle = event.target.closest<HTMLButtonElement>('.resize-handle');
             const syntaxEl = handle?.closest('syntax-node') as SyntaxNodeEl | null;

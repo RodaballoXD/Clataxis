@@ -4,13 +4,15 @@ import { FieldAutocomplete } from "./autocomplete.js";
 import { createButton } from "../shared/button.js";
 import { createEditorHelp } from "./editor-help.js";
 const ZOOM_STEPS = [0.25, 0.3, 0.4, 0.5, 0.6, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4];
-const DEFAULT_VIEW_STATE = {
-    zoomLevel: 1,
-    scrollLeft: 0,
-    scrollTop: 0
-};
+function getDefaultViewState() {
+    return {
+        zoomLevel: window.matchMedia('(max-width: 560px)').matches ? 0.6 : 1,
+        scrollLeft: 0,
+        scrollTop: 0
+    };
+}
 export class SyntaxEditor {
-    constructor(json, onChange = () => { }, controls, initialViewState = DEFAULT_VIEW_STATE, initialHelpState = { isOpen: true, step: 0 }, onHelpDismissed = () => { }, showInitialHelpHint = false) {
+    constructor(json, onChange = () => { }, controls, initialViewState = getDefaultViewState(), initialHelpState = { isOpen: true, step: 0 }, onHelpDismissed = () => { }, showInitialHelpHint = false) {
         this.supportsHistory = true;
         this.zoom = 1;
         this.notificationTimeout = null;
@@ -63,6 +65,8 @@ export class SyntaxEditor {
             this.clearTreePreview();
         };
         this.onKeyDown = (event) => {
+            if (this.controls.interfaceContainerEl.dataset.readonly === 'true')
+                return;
             if (this.state.editing.isEditing) {
                 if (this.autocomplete.handleKeyDown(event)) {
                     return;
@@ -135,6 +139,8 @@ export class SyntaxEditor {
             }
         };
         this.onPointerDown = (event) => {
+            if (this.controls.interfaceContainerEl.dataset.readonly === 'true')
+                return;
             if (event.target instanceof Element) {
                 const handle = event.target.closest('.resize-handle');
                 const syntaxEl = handle?.closest('syntax-node');

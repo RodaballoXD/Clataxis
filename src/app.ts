@@ -18,6 +18,7 @@ export class App {
     private currentEditorJSON: ReducedJSON | null = null;
     private treeEditorViewState: SyntaxEditorViewState | null = null;
     private editorMode: EditorMode = 'tree';
+    private isReadOnly = false;
     private editorHelpState: EditorHelpState = { isOpen: true, step: 0 };
     private editorHelpDismissed = false;
     private editorHelpInitialHintPending = false;
@@ -42,17 +43,18 @@ export class App {
                 this.editorHelpState = { isOpen: false, step: 0 };
                 this.editorHelpInitialHintPending = true;
             }
-            this.setScreen('editor', editorJSON, 'none');
+            this.setScreen('editor', editorJSON, 'none', true);
         } else {
             this.setScreen('sentence', undefined, 'none');
         }
     }
 
-    private setScreen(screen: Screen, json?: ReducedJSON, urlMode: URLMode = 'none') {
+    private setScreen(screen: Screen, json?: ReducedJSON, urlMode: URLMode = 'none', isReadOnly = false) {
         this.destroyActiveEditors();
         this.undoStack = [];
         this.redoStack = [];
         this.treeEditorViewState = null;
+        this.isReadOnly = screen === 'editor' && isReadOnly;
 
         this.appEl.replaceChildren();
         if (screen === 'sentence') {
@@ -73,7 +75,7 @@ export class App {
     private onBrowserNavigation = () => {
         const editorJSON = getEditorJSONFromURL();
         if (editorJSON) {
-            this.setScreen('editor', editorJSON, 'none');
+            this.setScreen('editor', editorJSON, 'none', true);
         } else {
             this.setScreen('sentence', undefined, 'none');
         }
@@ -129,6 +131,11 @@ export class App {
             },
             () => {
                 void this.copyAnalysisToGoogleDocs(editorContainerEls.notificationEl);
+            },
+            this.isReadOnly,
+            () => {
+                this.isReadOnly = false;
+                this.updateHistoryButtons();
             }
         );
         editorContainerEls.undoButtonEl.addEventListener('click', this.undo);
@@ -191,7 +198,7 @@ export class App {
     };
 
     private recordAnalysisChange(nextJSON: ReducedJSON) {
-        if (!this.currentEditorJSON || sameReducedJSON(this.currentEditorJSON, nextJSON)) return;
+        if (this.isReadOnly || !this.currentEditorJSON || sameReducedJSON(this.currentEditorJSON, nextJSON)) return;
 
         this.undoStack.push(cloneReducedJSON(this.currentEditorJSON));
         this.redoStack = [];
@@ -282,14 +289,15 @@ export class App {
         redoButtonEl ??= this.appEl.querySelector<HTMLButtonElement>('.editor-history-controls button:last-child') ?? undefined;
         if (!undoButtonEl || !redoButtonEl) return;
 
-        const historyDisabled = this.editorMode !== 'text'
+        const historyDisabled = this.isReadOnly || (this.editorMode !== 'text'
             && this.activeEditor !== null
-            && !this.activeEditor.supportsHistory;
+            && !this.activeEditor.supportsHistory);
         undoButtonEl.disabled = historyDisabled || this.undoStack.length === 0;
         redoButtonEl.disabled = historyDisabled || this.redoStack.length === 0;
     }
 
     private onKeyDown = (event: KeyboardEvent) => {
+        if (this.isReadOnly) return;
         if (!(event.ctrlKey || event.metaKey)) return;
         if (this.editorMode !== 'text') {
             if (!this.activeEditor || this.activeEditor.state.editing.isEditing) return;

@@ -7,12 +7,15 @@ export function createEditorInterface(
     mode: EditorMode,
     onBeforeAction: () => void,
     onCopyLink: () => void,
-    onCopyToGoogleDocs: () => void
+    onCopyToGoogleDocs: () => void,
+    isReadOnly: boolean,
+    onEnableEditing: () => void
 ): EditorInterfaceEls {
     const interfaceContainerEl = document.createElement('div');
     interfaceContainerEl.id = 'editor-container';
     interfaceContainerEl.className = 'editor-screen';
     interfaceContainerEl.dataset.mode = mode;
+    interfaceContainerEl.dataset.readonly = String(isReadOnly);
 
     const modeSelectorEl = document.createElement('div');
     modeSelectorEl.className = 'editor-mode-selector';
@@ -150,6 +153,7 @@ export function createEditorInterface(
 
     const textControlsEl = document.createElement('div');
     textControlsEl.className = 'editor-floating-panel editor-text-controls';
+    textControlsEl.inert = isReadOnly;
     const compactButtonEl = createButton(
         'Compactar el análisis. Ideal para compartirlo con un LLM',
         'M8 4H5a2 2 0 0 0-2 2v3m18 0V6a2 2 0 0 0-2-2h-3M3 15v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3M8 8l-3 4 3 4m8-8 3 4-3 4'
@@ -189,12 +193,27 @@ export function createEditorInterface(
 
     const rootContainerEl = document.createElement('section');
     rootContainerEl.id = 'editor-root-container';
+    rootContainerEl.inert = isReadOnly;
 
     const guidedPanelEl = document.createElement('section');
     guidedPanelEl.className = 'guided-panel';
     guidedPanelEl.hidden = true;
+    guidedPanelEl.inert = isReadOnly;
     guidedPanelEl.setAttribute('aria-live', 'polite');
     guidedPanelEl.setAttribute('aria-label', 'Análisis guiado');
+
+    const enableEditingButtonEl = createButton('Habilitar Edición');
+    enableEditingButtonEl.className = 'editor-enable-editing-button';
+    enableEditingButtonEl.textContent = 'Habilitar Edición';
+    enableEditingButtonEl.hidden = !isReadOnly;
+    enableEditingButtonEl.addEventListener('click', () => {
+        interfaceContainerEl.dataset.readonly = 'false';
+        rootContainerEl.inert = false;
+        guidedPanelEl.inert = false;
+        textControlsEl.inert = false;
+        enableEditingButtonEl.hidden = true;
+        onEnableEditing();
+    });
 
     const historyPanelEl = document.createElement('div');
     historyPanelEl.className = 'editor-history-panel';
@@ -217,6 +236,7 @@ export function createEditorInterface(
     interfaceContainerEl.replaceChildren(
         modeSelectorEl,
         topRightControlsEl,
+        enableEditingButtonEl,
         zoomControlsEl,
         guidedPanelEl,
         rootContainerEl,

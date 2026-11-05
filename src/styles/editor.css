@@ -10,7 +10,8 @@
 .editor-floating-panel > button,
 .editor-mode-selector button,
 .editor-copy-docs-button,
-.editor-copy-text-button {
+.editor-copy-text-button,
+.editor-enable-editing-button {
     height: 2.25rem;
     min-width: 2.25rem;
     border: 1px solid #d7dfe8;
@@ -28,14 +29,16 @@
 .editor-floating-panel > button:hover,
 .editor-mode-selector button:hover,
 .editor-copy-docs-button:hover,
-.editor-copy-text-button:hover {
+.editor-copy-text-button:hover,
+.editor-enable-editing-button:hover {
     background: #f7f9fb;
 }
 
 .editor-floating-panel > button:focus-visible,
 .editor-mode-selector button:focus-visible,
 .editor-copy-docs-button:focus-visible,
-.editor-copy-text-button:focus-visible {
+.editor-copy-text-button:focus-visible,
+.editor-enable-editing-button:focus-visible {
     outline: 2px solid rgba(31, 122, 140, 0.2);
     outline-offset: 2px;
 }
@@ -256,7 +259,7 @@
 
 .editor-help-button {
     position: fixed;
-    bottom: calc(1rem + env(safe-area-inset-bottom));
+    bottom: 1rem;
     left: 1rem;
     z-index: 21;
     box-sizing: border-box;
@@ -269,7 +272,7 @@
 
 .editor-help-reopen-hint {
     position: absolute;
-    bottom: calc(4.25rem + env(safe-area-inset-bottom));
+    bottom: 4.25rem;
     left: 1rem;
     width: max-content;
     max-width: min(17rem, calc(100vw - 2rem));
@@ -438,6 +441,23 @@
     position: relative;
 }
 
+.editor-enable-editing-button {
+    position: fixed;
+    top: 1rem;
+    left: 50%;
+    z-index: 11;
+    min-width: max-content;
+    height: 2.75rem;
+    border-radius: 0.9rem;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 0.25rem 0.9rem rgba(29, 36, 48, 0.12);
+    transform: translateX(-50%);
+}
+
+.editor-enable-editing-button[hidden] {
+    display: none;
+}
+
 .editor-copy-dropdown {
     right: 0;
 }
@@ -543,13 +563,13 @@
 }
 
 @media (max-width: 560px) {
-    .editor-screen[data-mode="text"] #editor-root-container {
-        padding: 7.25rem 1rem 4.5rem;
+    .editor-enable-editing-button,
+    .editor-top-right-controls {
+        top: 1rem;
     }
 
-    .editor-top-right-controls {
-        top: 0.75rem;
-        right: 0.75rem;
+    .editor-screen[data-mode="text"] #editor-root-container {
+        padding: 7.25rem 1rem 4.5rem;
     }
 
     .editor-text-controls > button {
