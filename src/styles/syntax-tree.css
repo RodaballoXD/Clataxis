@@ -27,7 +27,14 @@ root-node {
 #editor-container .analysis.editing .analysis-text > input:placeholder-shown,
 #editor-container .word-node.editing > input:placeholder-shown {
     opacity: 0.5;
+}
+
+#editor-container .analysis.editing .analysis-text > input:placeholder-shown {
     font-size: 1.2rem;
+}
+
+#editor-container .word-node.editing > input {
+    outline-offset: -0.1rem;
 }
 
 syntax-node {
@@ -312,10 +319,27 @@ syntax-node:hover:not(.selected):not(:has(.children syntax-node:hover, .children
     color: #5b5b5b;
 }
 
+#editor-container .word-node.editing > .word-comment-input::placeholder {
+    font-size: 1.2rem;
+}
+
 #editor-container .word-node.editing > .word-input {
+    box-sizing: content-box;
+    font-family: inherit;
+    line-height: inherit;
     font-size: 2.4rem;
-    height: fit-content;
     font-weight: bold;
+    height: auto;
+    margin-top: 0;
+}
+
+#editor-container .word-node.editing > .word-comment-input {
+    box-sizing: content-box;
+    font-family: inherit;
+    line-height: inherit;
+    height: auto;
+    margin-top: 0;
+    padding: 0;
 }
 
 .drag-target > .word-node > .word {
