@@ -252,7 +252,7 @@ export class WordNodeEl extends HTMLElement {
                 <div class="word-comment"></div>
                 <div class="word"></div>
 
-                <input class="word-comment-input" placeholder="comentario" spellcheck="false">
+                <input class="word-comment-input" placeholder="comentario" spellcheck="true">
                 <input class="word-input" placeholder="palabra">
             </div>
         `;
