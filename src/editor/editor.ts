@@ -113,6 +113,7 @@ export class SyntaxEditor {
         this.viewState = { ...viewState };
         this.zoom = viewState.zoomLevel;
         this.rootEl.style.zoom = String(this.zoom);
+        this.updateZoomControls();
         this.appEl.scrollLeft = viewState.scrollLeft;
         this.appEl.scrollTop = viewState.scrollTop;
         this.updateAnalysisPositions();
@@ -276,6 +277,7 @@ export class SyntaxEditor {
         const nextIndex = (isZoomingIn) ? Math.min(currentIndex + 1, ZOOM_STEPS.length - 1) : Math.max(currentIndex - 1, 0);
         const nextZoom = ZOOM_STEPS[nextIndex];
         this.zoom = Math.round(nextZoom * 100) / 100;
+        this.updateZoomControls();
 
         const scrollbarProgress = this.getScrollbarProgress();
         this.rootEl.style.zoom = String(this.zoom);
@@ -283,6 +285,11 @@ export class SyntaxEditor {
         this.appEl.scrollTop = scrollbarProgress.y * (this.appEl.scrollHeight - this.appEl.clientHeight);
         this.updateAnalysisPositions();
         this.showNotification(`Zoom ${this.zoom.toFixed(2).replace(/\.0$/, '')}x`);
+    }
+
+    private updateZoomControls() {
+        this.controls.zoomOutButtonEl.disabled = this.zoom <= ZOOM_STEPS[0];
+        this.controls.zoomInButtonEl.disabled = this.zoom >= ZOOM_STEPS[ZOOM_STEPS.length - 1];
     }
 
     private getScrollbarProgress(): { x: number, y: number } {
