@@ -273,7 +273,7 @@ syntax-node:hover:not(.selected):not(:has(.children syntax-node:hover, .children
     font-weight: 670;
     font-size: 1.6rem;
     height: 2.4rem;
-    overflow: hidden;
+    z-index: 4;
 }
 
 .analysis-text {
