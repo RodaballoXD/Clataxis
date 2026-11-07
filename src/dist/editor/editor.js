@@ -65,6 +65,16 @@ export class SyntaxEditor {
             this.clearTreePreview();
         };
         this.onKeyDown = (event) => {
+            if (event.key === '+') {
+                event.preventDefault();
+                this.changeZoom(true);
+                return;
+            }
+            if (event.key === '-') {
+                event.preventDefault();
+                this.changeZoom(false);
+                return;
+            }
             if (this.controls.interfaceContainerEl.dataset.readonly === 'true')
                 return;
             if (this.state.editing.isEditing) {
@@ -94,16 +104,6 @@ export class SyntaxEditor {
                     event.preventDefault();
                     this.swapNodeWithParent();
                 }
-                return;
-            }
-            if (event.key === '+') {
-                event.preventDefault();
-                this.changeZoom(true);
-                return;
-            }
-            if (event.key === '-') {
-                event.preventDefault();
-                this.changeZoom(false);
                 return;
             }
             const selectedId = this.state.selectedNodeId;
