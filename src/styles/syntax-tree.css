@@ -6,6 +6,11 @@ root-node {
     display: flex;
     justify-content: center;
     flex-grow: 1;
+    margin-bottom: -0.6rem;
+}
+
+.children:has(.syntax-node) {
+    margin-bottom: 0.0rem;
 }
 
 #editor-container .analysis.editing .analysis-text > input,
@@ -71,15 +76,41 @@ word-node:not(.selected) > .word-node:not(.editing):hover > .word {
 .line {
     position: relative;
     border-top: 2.4px solid #424242;
-    margin: 0.5rem 0.8rem 0;
+    margin: 0 0.6rem 0;
+}
+
+.vertical-lines {
+    display: flex;
+    justify-content: space-between;
+    height: 0.8rem;
+    margin: 0 0.6rem;
+}
+
+.vertical-line {
+    position: relative;
+    border-left: 2.4px solid #424242;
+}
+
+.vertical-line::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: auto;
+    bottom: 0;
+    left: -2.4px;
+    width: 2.4px;
+    box-shadow: 0 0 0 3px var(--vertical-line-shadow, transparent);
+    clip-path: inset(-3px -3px 3px);
+    pointer-events: none;
 }
 
 .resize-handle {
     display: none;
     position: absolute;
-    top: -0.45rem;
-    width: 0.8rem;
-    height: 0.8rem;
+    box-sizing: border-box;
+    top: calc(-0.325rem - 1.2px);
+    width: 0.65rem;
+    height: 0.65rem;
     border: 2px solid #a66c26;
     border-radius: 50%;
     padding: 0;
@@ -96,11 +127,11 @@ word-node:not(.selected) > .word-node:not(.editing):hover > .word {
 }
 
 .resize-handle.start {
-    left: -0.4rem;
+    left: calc(-0.325rem + 1.2px);
 }
 
 .resize-handle.end {
-    right: -0.4rem;
+    right: calc(-0.325rem + 1.2px);
 }
 
 .selected > .syntax-node > .line > .resize-handle {
@@ -157,16 +188,26 @@ syntax-node:hover:not(.selected):not(:has(.children syntax-node:hover, .children
     box-shadow: 0 0 0 3px rgba(31, 122, 140, 0.08);
 }
 
+syntax-node:hover:not(.selected):not(:has(.children syntax-node:hover, .children word-node:hover, .analysis.editing)) > .syntax-node > .vertical-lines .vertical-line {
+    border-color: #1f7a8c;
+    --vertical-line-shadow: rgba(31, 122, 140, 0.08);
+}
+
 .selected > .syntax-node > .line {
     border-color: #a66c26;
     box-shadow: 0 0 0 3px rgba(166, 108, 38, 0.12);
+}
+
+.selected > .syntax-node > .vertical-lines .vertical-line {
+    border-color: #a66c26;
+    --vertical-line-shadow: rgba(166, 108, 38, 0.12);
 }
 
 .node-action-buttons {
     display: flex;
     position: absolute;
     left: 50%;
-    bottom: -0.5rem;
+    bottom: -1.5rem;
     z-index: 2;
     transform: translateX(calc(-50% + var(--analysis-horizontal-offset, 0px)));
     gap: 2rem;
@@ -226,8 +267,7 @@ syntax-node:hover:not(.selected):not(:has(.children syntax-node:hover, .children
 }
 
 .analysis {
-    margin-bottom: 0.75rem;
-    padding: 0 1rem;
+    margin: 0 1.2rem;
     display: flex;
     justify-content: center;
     font-weight: 670;

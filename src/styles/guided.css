@@ -128,6 +128,7 @@
 }
 
 .editor-screen[data-mode="guided"] #editor-root-container syntax-node.guided-outside > .syntax-node > .line,
+.editor-screen[data-mode="guided"] #editor-root-container syntax-node.guided-outside > .syntax-node > .vertical-lines,
 .editor-screen[data-mode="guided"] #editor-root-container syntax-node.guided-outside > .syntax-node > .analysis,
 .editor-screen[data-mode="guided"] #editor-root-container word-node.guided-outside > .word-node {
     opacity: 0.12;

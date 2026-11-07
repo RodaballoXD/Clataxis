@@ -62,6 +62,10 @@ export class SyntaxNodeEl extends BoxNodeEl {
         this.innerHTML = `
             <div class="syntax-node">
                 <div class="children"></div>
+                <div class="vertical-lines">
+                    <div class="vertical-line start"></div>
+                    <div class="vertical-line end"></div>
+                </div>
                 <div class="line">
                     <button class="resize-handle start" type="button" aria-label="Redimensionar desde el inicio" title="Arrastrar para redimensionar desde el inicio"></button>
                     <button class="resize-handle end" type="button" aria-label="Redimensionar desde el final" title="Arrastrar para redimensionar desde el final"></button>
