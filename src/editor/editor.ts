@@ -394,18 +394,16 @@ export class SyntaxEditor {
     };
 
     private onKeyDown = (event: KeyboardEvent) => {
-        if (event.key === '+') {
-            event.preventDefault();
-            this.changeZoom(true);
+        if (this.controls.interfaceContainerEl.dataset.readonly === 'true') {
+            if (event.key === '+') {
+                event.preventDefault();
+                this.changeZoom(true);
+            } else if (event.key === '-') {
+                event.preventDefault();
+                this.changeZoom(false);
+            }
             return;
         }
-        if (event.key === '-') {
-            event.preventDefault();
-            this.changeZoom(false);
-            return;
-        }
-
-        if (this.controls.interfaceContainerEl.dataset.readonly === 'true') return;
 
         if (this.state.editing.isEditing) {
             if (this.autocomplete.handleKeyDown(event)) {
@@ -436,6 +434,17 @@ export class SyntaxEditor {
                 event.preventDefault();
                 this.swapNodeWithParent();
             }
+            return;
+        }
+
+        if (event.key === '+') {
+            event.preventDefault();
+            this.changeZoom(true);
+            return;
+        }
+        if (event.key === '-') {
+            event.preventDefault();
+            this.changeZoom(false);
             return;
         }
 
